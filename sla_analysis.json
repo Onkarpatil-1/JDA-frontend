@@ -1,0 +1,282 @@
+{
+  "metrics": {
+    "total_tickets": 10,
+    "total_workflow_steps": 886,
+    "avg_days_rested": 3.164785553047404,
+    "max_days_rested": 302,
+    "min_days_rested": 0,
+    "std_days_rested": 15.186298512025022,
+    "completed_tickets": 9,
+    "completion_rate": 90.0
+  },
+  "department_performance": {
+    "Deputy Commissioner (Zone 05)": {
+      "Total_Steps": 87,
+      "Avg_Days": 3.13,
+      "Max_Days": 104,
+      "Std_Days": 11.21
+    },
+    "Deputy Commissioner (Zone 06)": {
+      "Total_Steps": 183,
+      "Avg_Days": 5.21,
+      "Max_Days": 302,
+      "Std_Days": 24.51
+    },
+    "Deputy Commissioner (Zone 07)": {
+      "Total_Steps": 53,
+      "Avg_Days": 3.89,
+      "Max_Days": 86,
+      "Std_Days": 11.94
+    },
+    "Deputy Commissioner (Zone 09)": {
+      "Total_Steps": 122,
+      "Avg_Days": 4.16,
+      "Max_Days": 155,
+      "Std_Days": 20.34
+    },
+    "Deputy Commissioner (Zone 11)": {
+      "Total_Steps": 55,
+      "Avg_Days": 2.69,
+      "Max_Days": 52,
+      "Std_Days": 7.19
+    },
+    "Deputy Commissioner (Zone 12)": {
+      "Total_Steps": 123,
+      "Avg_Days": 2.02,
+      "Max_Days": 113,
+      "Std_Days": 10.26
+    },
+    "Deputy Commissioner (Zone 13)": {
+      "Total_Steps": 93,
+      "Avg_Days": 2.33,
+      "Max_Days": 85,
+      "Std_Days": 8.98
+    },
+    "Deputy Commissioner (Zone 14)": {
+      "Total_Steps": 170,
+      "Avg_Days": 1.49,
+      "Max_Days": 33,
+      "Std_Days": 3.3
+    }
+  },
+  "employee_workload": {
+    "RAKU (Deputy Commissioner)": {
+      "Tasks_Handled": 80,
+      "Avg_Processing_Time": 1.08
+    },
+    "RAME (Dealing Assistant )": {
+      "Tasks_Handled": 45,
+      "Avg_Processing_Time": 0.82
+    },
+    "TAVA (Deputy Commissioner)": {
+      "Tasks_Handled": 42,
+      "Avg_Processing_Time": 0.98
+    },
+    "HEKU (Deputy Commissioner)": {
+      "Tasks_Handled": 41,
+      "Avg_Processing_Time": 0.49
+    },
+    "APPA (Deputy Commissioner)": {
+      "Tasks_Handled": 36,
+      "Avg_Processing_Time": 0.83
+    },
+    "MUKU (Assistant Town Planner)": {
+      "Tasks_Handled": 27,
+      "Avg_Processing_Time": 1.41
+    },
+    "AMSH (Dealing Assistant )": {
+      "Tasks_Handled": 26,
+      "Avg_Processing_Time": 1.96
+    },
+    "VASH (Deputy Commissioner)": {
+      "Tasks_Handled": 24,
+      "Avg_Processing_Time": 1.29
+    },
+    "BAVE (Dealing Assistant )": {
+      "Tasks_Handled": 24,
+      "Avg_Processing_Time": 0.67
+    },
+    "SAKU (Deputy Commissioner)": {
+      "Tasks_Handled": 22,
+      "Avg_Processing_Time": 0.23
+    },
+    "NAKU (Assistant Town Planner)": {
+      "Tasks_Handled": 22,
+      "Avg_Processing_Time": 2.5
+    },
+    "RAKU (Dealing Assistant )": {
+      "Tasks_Handled": 21,
+      "Avg_Processing_Time": 1.71
+    },
+    "DORA (Dealing Assistant )": {
+      "Tasks_Handled": 21,
+      "Avg_Processing_Time": 1.0
+    },
+    "INPR (Dealing Assistant )": {
+      "Tasks_Handled": 21,
+      "Avg_Processing_Time": 3.1
+    },
+    "SUSH (Accountant)": {
+      "Tasks_Handled": 18,
+      "Avg_Processing_Time": 1.11
+    },
+    "ROYA (Accountant)": {
+      "Tasks_Handled": 17,
+      "Avg_Processing_Time": 1.06
+    },
+    "SUKU (Tehsildar)": {
+      "Tasks_Handled": 17,
+      "Avg_Processing_Time": 1.65
+    },
+    "VINA (Accountant)": {
+      "Tasks_Handled": 15,
+      "Avg_Processing_Time": 0.33
+    },
+    "HASA (Dealing Assistant )": {
+      "Tasks_Handled": 14,
+      "Avg_Processing_Time": 0.57
+    },
+    "KRMO (Dealing Assistant )": {
+      "Tasks_Handled": 13,
+      "Avg_Processing_Time": 1.31
+    }
+  },
+  "bottlenecks": {
+    "APPLICANT": {
+      "Occurrences": 44,
+      "Avg_Delay_Days": 37.84
+    },
+    "Accountant": {
+      "Occurrences": 1,
+      "Avg_Delay_Days": 10.0
+    },
+    "Dealing Assistant ": {
+      "Occurrences": 9,
+      "Avg_Delay_Days": 9.44
+    },
+    "Deputy Commissioner": {
+      "Occurrences": 9,
+      "Avg_Delay_Days": 8.33
+    },
+    "Junior Engineer": {
+      "Occurrences": 4,
+      "Avg_Delay_Days": 8.0
+    },
+    "STP": {
+      "Occurrences": 1,
+      "Avg_Delay_Days": 7.0
+    },
+    "Tehsildar": {
+      "Occurrences": 1,
+      "Avg_Delay_Days": 7.0
+    },
+    "Delivery Window": {
+      "Occurrences": 2,
+      "Avg_Delay_Days": 6.5
+    },
+    "Assistant Town Planner": {
+      "Occurrences": 3,
+      "Avg_Delay_Days": 6.33
+    },
+    "Assistant Advocate": {
+      "Occurrences": 4,
+      "Avg_Delay_Days": 6.0
+    },
+    "Junior Assistant": {
+      "Occurrences": 2,
+      "Avg_Delay_Days": 6.0
+    }
+  },
+  "service_analysis": {
+    "Purchased Through Sale Deed": {
+      "Unique_Tickets": 4,
+      "Avg_Processing_Time": 2.65
+    },
+    "Original Allottee/ Allotee on the basis of Transfer Letter": {
+      "Unique_Tickets": 2,
+      "Avg_Processing_Time": 3.28
+    },
+    "Layout Plan Approval": {
+      "Unique_Tickets": 1,
+      "Avg_Processing_Time": 1.39
+    },
+    "Lease Deed (Patta) Death Certificate": {
+      "Unique_Tickets": 1,
+      "Avg_Processing_Time": 3.13
+    },
+    "Original Allottee": {
+      "Unique_Tickets": 1,
+      "Avg_Processing_Time": 10.76
+    },
+    "Transport Nagar E-Pataa Service": {
+      "Unique_Tickets": 1,
+      "Avg_Processing_Time": 2.33
+    }
+  },
+  "anomalies": {
+    "count": 11,
+    "percentage": 1.2415349887133182,
+    "examples": [
+      {
+        "Ticket ID": "User_170",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 128,
+        "z_score": 8.220252904162516
+      },
+      {
+        "Ticket ID": "User_170",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 302,
+        "z_score": 19.677949449651923
+      },
+      {
+        "Ticket ID": "User_186",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 149,
+        "z_score": 9.60307834930779
+      },
+      {
+        "Ticket ID": "User_186",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 74,
+        "z_score": 4.6644160452175285
+      },
+      {
+        "Ticket ID": "User_186",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 155,
+        "z_score": 9.99817133363501
+      },
+      {
+        "Ticket ID": "User_216",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 104,
+        "z_score": 6.6398809668536325
+      },
+      {
+        "Ticket ID": "User_218",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 45,
+        "z_score": 2.754799954302628
+      },
+      {
+        "Ticket ID": "User_223",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 113,
+        "z_score": 7.232520443344464
+      },
+      {
+        "Ticket ID": "User_226",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 85,
+        "z_score": 5.388753183150767
+      },
+      {
+        "Ticket ID": "User_229",
+        "Post": "APPLICANT",
+        "TotalDaysRested": 86,
+        "z_score": 5.454602013871971
+      }
+    ]
+  }
+}
