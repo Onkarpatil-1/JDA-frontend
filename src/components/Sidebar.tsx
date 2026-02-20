@@ -2,10 +2,9 @@
 import React, { useState } from 'react';
 import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, IconButton, Tooltip, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import {
-    FileText, AlertTriangle,
     Settings, ShieldCheck, ArrowLeft, ChevronLeft, ChevronRight,
-    Microscope, Layers, Briefcase,
-    LayoutDashboard, MessageSquareText, Users, AppWindow, Play // New Icons
+    Microscope,
+    LayoutDashboard, MessageSquareText, Users, Play, Zap // Updated Icons
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
         // { text: 'Detail Intelligence', icon: <Microscope size={20} />, id: 'JDA Intelligence' },
         { text: 'Remarks Analysis', icon: <MessageSquareText size={20} />, id: 'Text Analytics' },
         { text: 'Employee Analytics', icon: <Users size={20} />, id: 'Employee Analytics' },
+        { text: 'Error Analysis', icon: <Zap size={20} />, id: 'Error Analysis' },
         { text: 'Playground', icon: <Play size={20} />, id: 'Playground' },
         // { text: 'Applications', icon: <AppWindow size={20} />, id: 'Applications' },
         // { text: 'Anomalies', icon: <AlertTriangle size={20} />, id: 'Anomalies' },

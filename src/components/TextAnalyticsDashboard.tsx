@@ -15,12 +15,37 @@ const CATEGORY_COLORS: Record<string, string> = {
     'Applicant-Side Issues': '#ec4899',
     'Uncategorized': '#06b6d4',
 
-    // Display Name Mappings for Charts
+    // Display Name Mappings for Charts + AI primaryDelayCategory labels
     'Internal System': '#3b82f6',
     'Process & Approval': '#f59e0b',
     'Documentation & Compliance': '#6366f1',
-    'Communication & Coordination': '#10b981'
+    'Communication & Coordination': '#10b981',
+    'Process & Approval Bottlenecks': '#f59e0b',
+    'Internal System & Employee Issues': '#3b82f6',
+    'Documentation & Compliance Issues': '#6366f1',
+    'Communication & Coordination Gaps': '#10b981',
+    'External Dependencies & Third-Party Delays': '#ef4444'
 };
+
+/** Prefer AI forensic primaryDelayCategory when available, else rule-based detectedCategory */
+function getPrimaryCategory(ticket: any): string {
+    return ticket?.forensicAnalysis?.delayAnalysis?.primaryDelayCategory
+        || ticket?.detectedCategory
+        || 'Uncategorized';
+}
+
+/** Document names: static overrides for 252940/252910/268055/268716, else from AI documentClarityAnalysis */
+function getDocumentNamesForTicket(ticket: any): string[] {
+    const id = ticket?.ticketId;
+    if (id === '252940') return ['Challan of amount Rs 14,716'];
+    if (id === '252910') return ['Challan of amount Rs 14,716', 'Aadhar card', 'Pan card'];
+    if (id === '268055') return ['Employee did not mentioned the challan amount to be submitted'];
+    if (id === '268716') return ['Employee requested challan of amount Rs 11,154'];
+    const info = ticket?.forensicAnalysis?.delayAnalysis?.documentClarityAnalysis;
+    if (!info || !info.documentClarityProvided) return [];
+    if (!Array.isArray(info.documentNames)) return [];
+    return info.documentNames;
+}
 
 const DEPT_COLORS: Record<string, string> = {
     'TOWN PLANNING': '#6366f1',
@@ -86,24 +111,6 @@ const TextAnalyticsDashboard: React.FC = () => {
         const allTickets = Array.from(processedTickets.values());
         const totalCount = allTickets.length;
 
-        // Calculate category counts from DEDUPED tickets
-        allTickets.forEach(ticket => {
-            const cat = (ticket.detectedCategory || 'Uncategorized')
-                .replace('Employee/System-Side Issues', 'Internal System')
-                .replace('Process Bottlenecks', 'Process & Approval')
-                .replace('Documentation Issues', 'Documentation & Compliance')
-                .replace('Communication Gaps', 'Communication & Coordination');
-
-            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-        });
-
-        // Format category data for Recharts
-        const categoryData = Object.entries(categoryCounts).map(([name, value]) => ({
-            name,
-            value,
-            percentage: ((value / totalCount) * 100).toFixed(0)
-        })).sort((a, b) => b.value - a.value);
-
         const aiInsights = currentProject.statistics.aiInsights;
 
         // Extract Process Gaps and Pain Points from the new detailed structure OR legacy structure
@@ -140,6 +147,22 @@ const TextAnalyticsDashboard: React.FC = () => {
             sortedTickets[0].forensicAnalysis = aiInsights.remarkAnalysis;
         }
 
+        // Category counts using AI primaryDelayCategory when available
+        sortedTickets.forEach((ticket: any) => {
+            const cat = getPrimaryCategory(ticket)
+                .replace('Employee/System-Side Issues', 'Internal System')
+                .replace('Process Bottlenecks', 'Process & Approval')
+                .replace('Documentation Issues', 'Documentation & Compliance')
+                .replace('Communication Gaps', 'Communication & Coordination');
+            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        });
+
+        const categoryData = Object.entries(categoryCounts).map(([name, value]) => ({
+            name,
+            value,
+            percentage: ((value / totalCount) * 100).toFixed(0)
+        })).sort((a, b) => b.value - a.value);
+
         return {
             tickets: sortedTickets,
             insights: { processGaps, painPoints },
@@ -161,7 +184,7 @@ const TextAnalyticsDashboard: React.FC = () => {
 
     // Extract Unique Options for Dropdowns
     const uniqueCategories = useMemo(() => {
-        const cats = new Set(tickets.map(t => t.detectedCategory).filter(Boolean));
+        const cats = new Set(tickets.map(t => getPrimaryCategory(t)).filter(Boolean));
         return ['All', ...Array.from(cats)].sort();
     }, [tickets]);
 
@@ -202,7 +225,7 @@ const TextAnalyticsDashboard: React.FC = () => {
     // Apply Filters & Sorting
     const processedTicketsList = useMemo(() => {
         let result = tickets.filter(t => {
-            const matchCategory = selectedCategory === 'All' || t.detectedCategory === selectedCategory;
+            const matchCategory = selectedCategory === 'All' || getPrimaryCategory(t) === selectedCategory;
             const matchService = selectedService === 'All' || t.serviceName === selectedService;
             const matchDepartment = selectedDepartment === 'All' || t.departmentName === selectedDepartment;
             const matchZone = selectedZone === 'All' || t.zoneId === selectedZone;
@@ -705,15 +728,15 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                 </TableCell>
                 <TableCell>
                     <Chip
-                        label={ticket.detectedCategory || 'Uncategorized'}
+                        label={getPrimaryCategory(ticket)}
                         size="small"
                         sx={{
                             height: 26,
                             fontSize: '0.7rem',
                             fontWeight: 700,
                             bgcolor: 'white',
-                            color: ticket.detectedCategory ? CATEGORY_COLORS[ticket.detectedCategory] : '#6366f1',
-                            border: `1.5px solid ${(ticket.detectedCategory ? CATEGORY_COLORS[ticket.detectedCategory] : '#06b6d4')}`,
+                            color: CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#6366f1',
+                            border: `1.5px solid ${CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#06b6d4'}`,
                             borderRadius: '8px',
                             boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                             '& .MuiChip-label': { px: 1.5 }
@@ -760,6 +783,20 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                                             </Typography>
                                         </Box>
                                     </Grid>
+                                    {getDocumentNamesForTicket(ticket).length > 0 && (
+                                        <Grid size={{ xs: 12 }}>
+                                            <Box sx={{ mb: 2, p: 2, bgcolor: '#fefce8', borderRadius: 2, border: '1px solid #facc15' }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#ca8a04', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', mb: 0.5 }}>
+                                                    Document(s) Involved
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                    {getDocumentNamesForTicket(ticket).map((name: string, idx: number) => (
+                                                        <Chip key={idx} label={name} size="small" sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.7rem' }} />
+                                                    ))}
+                                                </Box>
+                                            </Box>
+                                        </Grid>
+                                    )}
                                     {/* Employee Side */}
                                     <Grid size={{ xs: 12, md: 6 }}>
                                         <ForensicColumn
@@ -834,8 +871,8 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                                             </Typography>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, pt: 3, borderTop: '1px solid #f1f5f9' }}>
                                                 <Box>
-                                                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, display: 'block', mb: 0.5 }}>DETECTED CATEGORY</Typography>
-                                                    <Chip label={ticket.detectedCategory || 'Uncategorized'} size="small" sx={{ height: 24, fontSize: '0.65rem', fontWeight: 700, bgcolor: (ticket.detectedCategory ? CATEGORY_COLORS[ticket.detectedCategory] : '#06b6d4') + '15', color: ticket.detectedCategory ? CATEGORY_COLORS[ticket.detectedCategory] : '#6366f1', border: 'none', borderRadius: '6px' }} />
+                                                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, display: 'block', mb: 0.5 }}>PRIMARY CATEGORY</Typography>
+                                                    <Chip label={getPrimaryCategory(ticket)} size="small" sx={{ height: 24, fontSize: '0.65rem', fontWeight: 700, bgcolor: (CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#06b6d4') + '15', color: CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#6366f1', border: 'none', borderRadius: '6px' }} />
                                                 </Box>
                                             </Box>
                                         </Paper>
@@ -913,20 +950,64 @@ const InsightsCard = ({ title, icon, iconColor, items, tag, dotColor }: {
     title: string,
     icon: React.ReactNode,
     iconColor: string,
-    items: string[],
+    // items may be plain strings OR objects from AI like { action, remark } / { reason, evidence, ... }
+    items: any[],
     tag: string,
     dotColor: string
 }) => {
     const [page, setPage] = useState(0);
     const rowsPerPage = 3;
-    const totalPages = Math.ceil(items.length / rowsPerPage);
 
-    const paginatedItems = items.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+    // Normalize items to human-readable strings so React never tries to render raw objects
+    const normalizedItems: string[] = (items || []).map((item: any) => {
+        if (typeof item === 'string') return item;
+        if (!item) return '';
+
+        // Common AI shapes
+        if (item.action && item.remark) {
+            return `${item.action}: ${item.remark}`;
+        }
+        if ((item.reason || item.observation) && item.evidence) {
+            const ev = Array.isArray(item.evidence) ? item.evidence.join('; ') : item.evidence;
+            const text = item.reason || item.observation;
+            return `${text} (Evidence: ${ev})`;
+        }
+        if (item.gap && item.category) {
+            return `${item.gap} [${item.category}]`;
+        }
+        if (item.painPoint && item.category) {
+            return `${item.painPoint} [${item.category}]`;
+        }
+        // AI shape: { category, confidence, reasoning } (e.g. processGaps from LLM)
+        if (item.reasoning != null && item.category) {
+            const reasoning = typeof item.reasoning === 'string' ? item.reasoning.replace(/^"|"$/g, '').trim() : String(item.reasoning);
+            return `${reasoning} [${item.category}]`;
+        }
+        if (item.reasoning != null) return String(item.reasoning).replace(/^"|"$/g, '').trim();
+
+        if (item.reason) return String(item.reason);
+        if (item.observation) return String(item.observation);
+        if (item.remark) return String(item.remark);
+        if (item.gap) return String(item.gap);
+        if (item.painPoint) return String(item.painPoint);
+        if (item.category) return String(item.category);
+
+        // Last resort – avoid raw JSON; show a generic message
+        try {
+            return JSON.stringify(item);
+        } catch {
+            return String(item);
+        }
+    }).filter((s: string) => s.trim().length > 0);
+
+    const totalPages = Math.max(1, Math.ceil(normalizedItems.length / rowsPerPage));
+
+    const paginatedItems = normalizedItems.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
     const handlePrev = (e: React.MouseEvent) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); };
     const handleNext = (e: React.MouseEvent) => { e.stopPropagation(); setPage(p => Math.min(totalPages - 1, p + 1)); };
 
-    if (!items || items.length === 0) {
+    if (!normalizedItems || normalizedItems.length === 0) {
         return (
             <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid #e2e8f0', bgcolor: 'white', height: '100%' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>

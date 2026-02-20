@@ -169,6 +169,10 @@ export interface ForensicAnalysis {
     delayAnalysis: {
         primaryDelayCategory: string;
         primaryCategoryConfidence: number;
+        documentClarityAnalysis?: {
+            documentClarityProvided: boolean;
+            documentNames: string[];
+        };
         categorySummary: string;
         allApplicableCategories: Array<{
             category: string;

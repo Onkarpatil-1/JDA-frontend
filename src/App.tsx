@@ -14,6 +14,7 @@ import TextAnalyticsDashboard from './components/TextAnalyticsDashboard';
 import ProjectsPage from './pages/ProjectsPage';
 import EmployeeAnalyticsPage from './pages/EmployeeAnalyticsPage'; // Add import
 import TextAnalyticsPlayground from './pages/TextAnalyticsPlayground'; // Add import
+import ErrorAnalysisPage from './pages/ErrorAnalysisPage'; // Add import
 import AIProgressOverlay from './components/AIProgressOverlay'; // Add import
 import { ProjectProvider, useProject } from './context/ProjectContext';
 
@@ -113,6 +114,8 @@ function DashboardContent() {
         return <TextAnalyticsDashboard />;
       case 'Employee Analytics':
         return <EmployeeAnalyticsPage />;
+      case 'Error Analysis':
+        return <ErrorAnalysisPage />;
       case 'JDA Intelligence':
         return <JDAIntelligencePage />;
       case 'Playground':

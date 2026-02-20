@@ -26,6 +26,10 @@ interface ForensicAnalysis {
     delayAnalysis: {
         primaryDelayCategory: string;
         primaryCategoryConfidence: number;
+        documentClarityAnalysis?: {
+            documentClarityProvided: boolean;
+            documentNames: string[];
+        };
         categorySummary: string;
         allApplicableCategories: Array<{
             category: string;
@@ -67,19 +71,43 @@ interface ForensicAnalysis {
 }
 
 const TextAnalyticsPlayground = () => {
-    const [inputText, setInputText] = useState('');
+    const [remarksText, setRemarksText] = useState('');
+    const [fromText, setFromText] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<ForensicAnalysis | null>(null);
 
     const handleAnalyze = async () => {
-        if (!inputText.trim()) return;
+        const hasRemarks = remarksText.trim().length > 0;
+        const hasFrom = fromText.trim().length > 0;
+
+        if (!hasRemarks && !hasFrom) return;
+
+        // Build combined tab-separated lines to match backend expectations:
+        // "LifeTimeRemarks\tLifeTimeRemarksFrom"
+        let payloadText = '';
+        if (hasRemarks && hasFrom) {
+            const remarksLines = remarksText.split('\n');
+            const fromLines = fromText.split('\n');
+            const maxLen = Math.max(remarksLines.length, fromLines.length);
+            const combined: string[] = [];
+            for (let i = 0; i < maxLen; i++) {
+                const r = (remarksLines[i] ?? '').trim();
+                const f = (fromLines[i] ?? '').trim();
+                if (!r && !f) continue;
+                combined.push(`${r}\t${f}`);
+            }
+            payloadText = combined.join('\n');
+        } else {
+            // Fallback to single-column behaviour (old playground style)
+            payloadText = (hasRemarks ? remarksText : fromText).trim();
+        }
 
         setLoading(true);
         try {
             const response = await fetch('http://localhost:3001/api/v1/analyze/playground', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: inputText })
+                body: JSON.stringify({ text: payloadText })
             });
             const data = await response.json();
             setResult(data);
@@ -106,55 +134,86 @@ const TextAnalyticsPlayground = () => {
             <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="overline" sx={{ fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>
-                        RAW DATA INPUT (LIFETIMEREMARKS & LIFETIMEREMARKSFROM)
+                        RAW DATA INPUT (SEPARATE COLUMNS)
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>
-                        Note: Excel formatting and columns will be preserved for LLM processing.
+                        Paste each column independently, like in the main dashboard.
                     </Typography>
                 </Box>
-                <TextField
-                    fullWidth
-                    multiline
-                    rows={10}
-                    variant="outlined"
-                    placeholder="Paste content here...
-
-Supported Formats:
-1. Excel Copy-Paste: Copy columns 'LifeTimeRemarks' and 'LifeTimeRemarksFrom'
-2. Raw Text: Just paste the remarks
-
-Example Excel Paste:
-Document verified    Notification sent to applicant
-Submitted on time    Reply from Applicant"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    sx={{
-                        mb: 1, fontFamily: 'monospace',
-                        bgcolor: '#f8fafc',
-                        borderRadius: 2,
-                        '& .MuiOutlinedInput-root': {
-                            '& fieldset': { borderColor: '#e2e8f0' },
-                            '&:hover fieldset': { borderColor: '#cbd5e1' },
-                            '&.Mui-focused fieldset': { borderColor: '#6366f1' }
-                        }
-                    }}
-                />
+                <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748b', fontWeight: 600 }}>
+                            LifeTimeRemarks (Raw remarks text)
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={10}
+                            variant="outlined"
+                            placeholder="Example:
+Document verified
+Submitted on time
+भवन योजना प्राप्त हुई। समीक्षा की जा रही है"
+                            value={remarksText}
+                            onChange={(e) => setRemarksText(e.target.value)}
+                            sx={{
+                                mb: 1, fontFamily: 'monospace',
+                                bgcolor: '#f8fafc',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    '& fieldset': { borderColor: '#e2e8f0' },
+                                    '&:hover fieldset': { borderColor: '#cbd5e1' },
+                                    '&.Mui-focused fieldset': { borderColor: '#4f46e5' }
+                                }
+                            }}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#64748b', fontWeight: 600 }}>
+                            LifeTimeRemarksFrom (Source: Notification / Reply etc.)
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={10}
+                            variant="outlined"
+                            placeholder="Example:
+Notification sent to applicant
+Reply from Applicant
+Notification sent to applicant"
+                            value={fromText}
+                            onChange={(e) => setFromText(e.target.value)}
+                            sx={{
+                                mb: 1, fontFamily: 'monospace',
+                                bgcolor: '#f8fafc',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    '& fieldset': { borderColor: '#e2e8f0' },
+                                    '&:hover fieldset': { borderColor: '#cbd5e1' },
+                                    '&.Mui-focused fieldset': { borderColor: '#f97316' }
+                                }
+                            }}
+                        />
+                    </Grid>
+                </Grid>
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                     <Button
                         variant="contained"
                         size="large"
                         onClick={handleAnalyze}
-                        disabled={loading || !inputText.trim()}
+                        disabled={loading || (!remarksText.trim() && !fromText.trim())}
                         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Play size={20} />} // Changed Microscope to Play for action
                         sx={{
-                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%)',
                             px: 4,
                             py: 1.5,
                             borderRadius: 2,
                             fontWeight: 700,
-                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                            letterSpacing: '0.06em',
+                            boxShadow: '0 6px 18px rgba(79, 70, 229, 0.35)',
                             '&:hover': {
-                                boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)'
+                                boxShadow: '0 8px 22px rgba(67, 56, 202, 0.45)',
+                                background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 60%, #3730a3 100%)'
                             }
                         }}
                     >
@@ -235,13 +294,7 @@ Submitted on time    Reply from Applicant"
                                     }}
                                 />
                             </Box>
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', mb: 1, display: 'block' }}>SENTIMENT SCORE</Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 800, color: result.applicantRemarkAnalysis.sentimentTrend === 'Frustrated' ? '#ef4444' : '#0f172a' }}>
-                                    {result.applicantRemarkAnalysis.sentimentTrend === 'Frustrated' && '● '}
-                                    {result.applicantRemarkAnalysis.sentimentTrend}
-                                </Typography>
-                            </Box>
+                     
                         </Box>
 
                         <Grid container spacing={4}>
@@ -278,6 +331,56 @@ Submitted on time    Reply from Applicant"
                                 </Box>
                             </Grid>
                         </Grid>
+
+                        {/* Ticket Insight + Sentiment Summary */}
+                        {(result.ticketInsightSummary || result.sentimentSummary) && (
+                            <Grid container spacing={3} sx={{ mt: 4 }}>
+                                {result.ticketInsightSummary && (
+                                    <Grid size={{ xs: 12, md: 7 }}>
+                                        <Box sx={{ p: 2.5, bgcolor: '#eff6ff', borderRadius: 2, border: '1px solid #bfdbfe' }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 700,
+                                                    color: '#1d4ed8',
+                                                    letterSpacing: '0.08em',
+                                                    textTransform: 'uppercase',
+                                                    display: 'block',
+                                                    mb: 0.5
+                                                }}
+                                            >
+                                                Ticket Insight Summary
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#1e3a8a', fontSize: '0.85rem' }}>
+                                                {result.ticketInsightSummary}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                )}
+                                {result.sentimentSummary && (
+                                    <Grid size={{ xs: 12, md: 5 }}>
+                                        <Box sx={{ p: 2.5, bgcolor: '#fefce8', borderRadius: 2, border: '1px solid #facc15' }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 700,
+                                                    color: '#ca8a04',
+                                                    letterSpacing: '0.08em',
+                                                    textTransform: 'uppercase',
+                                                    display: 'block',
+                                                    mb: 0.5
+                                                }}
+                                            >
+                                                Sentiment Summary
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#713f12', fontSize: '0.85rem' }}>
+                                                {result.sentimentSummary}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                )}
+                            </Grid>
+                        )}
                     </Paper>
                 </Box>
             )}
