@@ -2,8 +2,6 @@ import React from 'react';
 import { Box, Typography, Stack } from '@mui/material';
 import { TrendingUp, AlertTriangle, Star, Lightbulb } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
-import { AIBadge } from './AIBadge';
-
 const AIInsightsPanel: React.FC = () => {
     const { currentProject } = useProject();
 

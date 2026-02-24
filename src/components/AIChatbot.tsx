@@ -5,8 +5,7 @@ import {
 } from '@mui/material';
 import { Send, Bot, X, Sparkles, MessageCircle } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
-import { AIBadge } from './AIBadge';
-
+import API_BASE from '../lib/api';
 const AIChatbot: React.FC = () => {
     const { currentProject } = useProject();
     const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +48,7 @@ const AIChatbot: React.FC = () => {
             }));
 
             // Call Ollama backend API with conversation history
-            const response = await fetch('http://localhost:3001/api/v1/query', {
+            const response = await fetch(`${API_BASE}/query`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -34,15 +34,10 @@ function getPrimaryCategory(ticket: any): string {
         || 'Uncategorized';
 }
 
-/** Document names: static overrides for 252940/252910/268055/268716, else from AI documentClarityAnalysis */
+/** Document names derived from AI documentClarityAnalysis */
 function getDocumentNamesForTicket(ticket: any): string[] {
-    const id = ticket?.ticketId;
-    if (id === '252940') return ['Challan of amount Rs 14,716'];
-    if (id === '252910') return ['Challan of amount Rs 14,716', 'Aadhar card', 'Pan card'];
-    if (id === '268055') return ['Employee did not mentioned the challan amount to be submitted'];
-    if (id === '268716') return ['Employee requested challan of amount Rs 11,154'];
     const info = ticket?.forensicAnalysis?.delayAnalysis?.documentClarityAnalysis;
-    if (!info || !info.documentClarityProvided) return [];
+    if (!info) return [];
     if (!Array.isArray(info.documentNames)) return [];
     return info.documentNames;
 }
@@ -341,8 +336,8 @@ const TextAnalyticsDashboard: React.FC = () => {
                     <IconButton sx={{ bgcolor: 'white', border: '1px solid #e2e8f0', borderRadius: 2.5, width: 44, height: 44 }}>
                         <Bell size={20} color="#64748b" />
                     </IconButton>
-                    <Avatar sx={{ width: 44, height: 44, bgcolor: '#6366f1', fontSize: '0.9rem', fontWeight: 700, borderRadius: 2.5 }}>
-                        JD
+                    <Avatar sx={{ width: 44, height: 44, bgcolor: '#f1f5f9', color: '#6366f1', border: '1px solid #e2e8f0', borderRadius: 2.5 }}>
+                        <User size={20} />
                     </Avatar>
                 </Box>
             </Box>

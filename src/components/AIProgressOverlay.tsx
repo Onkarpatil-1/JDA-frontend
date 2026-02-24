@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, LinearProgress, Paper } from '@mui/material';
-import { Sparkles, CheckCircle, Terminal } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import API_BASE from '../lib/api';
 
 interface ProgressEvent {
     stage: string;
@@ -14,7 +15,7 @@ const AIProgressOverlay: React.FC = () => {
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const eventSource = new EventSource('http://localhost:3001/api/v1/progress');
+        const eventSource = new EventSource(`${API_BASE}/progress`);
 
         eventSource.onmessage = (event) => {
             const data: ProgressEvent = JSON.parse(event.data);

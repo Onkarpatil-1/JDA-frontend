@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Box, Typography, Paper, Button, TextField, Chip, CircularProgress, Grid } from '@mui/material';
 import { Microscope, Play, Building2, User } from 'lucide-react';
+import API_BASE from '../lib/api';
 
 interface ForensicAnalysis {
     employeeRemarkAnalysis: {
@@ -104,7 +105,7 @@ const TextAnalyticsPlayground = () => {
 
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:3001/api/v1/analyze/playground', {
+            const response = await fetch(`${API_BASE}/analyze/playground`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: payloadText })
@@ -294,7 +295,7 @@ Notification sent to applicant"
                                     }}
                                 />
                             </Box>
-                     
+
                         </Box>
 
                         <Grid container spacing={4}>

@@ -4,7 +4,8 @@ import type { ProjectData, ProjectMetadata } from '../types';
 import { analyzeWorkflowData } from '../utils/dataAnalyzer';
 
 // API Base URL
-const API_BASE = 'http://localhost:3001/api/v1';
+import API_BASE from '../lib/api';
+
 
 interface FilterState {
     search: string;

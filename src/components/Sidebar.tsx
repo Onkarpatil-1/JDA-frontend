@@ -4,7 +4,7 @@ import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typogr
 import {
     Settings, ShieldCheck, ArrowLeft, ChevronLeft, ChevronRight,
     Microscope,
-    LayoutDashboard, MessageSquareText, Users, Play, Zap // Updated Icons
+    LayoutDashboard, MessageSquareText, Play, Zap // Updated Icons
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
         { text: 'Data Distribution', icon: <LayoutDashboard size={20} />, id: 'Data Distribution' },
         // { text: 'Detail Intelligence', icon: <Microscope size={20} />, id: 'JDA Intelligence' },
         { text: 'Remarks Analysis', icon: <MessageSquareText size={20} />, id: 'Text Analytics' },
-        { text: 'Employee Analytics', icon: <Users size={20} />, id: 'Employee Analytics' },
+        // { text: 'Employee Analytics', icon: <Users size={20} />, id: 'Employee Analytics' },
         { text: 'Zonewise Analysis', icon: <Zap size={20} />, id: 'Error Analysis' },
         { text: 'Playground', icon: <Play size={20} />, id: 'Playground' },
         // { text: 'Applications', icon: <AppWindow size={20} />, id: 'Applications' },

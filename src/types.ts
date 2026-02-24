@@ -109,25 +109,18 @@ export interface JDAIntelligence {
 
 // AI-Powered Insights
 export interface AIInsights {
-    anomalyPatterns: string;
     rootCause: string;
     predictions: string;
     recommendations: string[];
     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     confidence: number;
-    // Tabular insights
-    employeeEfficiencyTable?: string;
-    zoneEfficiencyTable?: string;
-    breachRiskTable?: string;
-    highPriorityTable?: string;
-    behavioralRedFlagsTable?: string;
     remarkAnalysis?: ForensicAnalysis;
     // Per-ticket forensic analysis map (NEW)
     forensicReports?: Record<string, ForensicAnalysis>;
 }
 
 export interface ForensicAnalysis {
-    overallRemarkAnalysis?: {
+    overallRemarkAnalysis: {
         employeeRemarksOverall: {
             totalEmployeeRemarks: number;
             summary: string;
@@ -169,7 +162,7 @@ export interface ForensicAnalysis {
     delayAnalysis: {
         primaryDelayCategory: string;
         primaryCategoryConfidence: number;
-        documentClarityAnalysis?: {
+        documentClarityAnalysis: {
             documentClarityProvided: boolean;
             documentNames: string[];
         };
@@ -191,8 +184,6 @@ export interface ForensicAnalysis {
     };
     sentimentSummary: string;
     ticketInsightSummary: string;
-    // New JDA Intelligence Structure
-    jdaIntelligence?: JDAIntelligence;
 }
 
 export interface WorkflowStep {

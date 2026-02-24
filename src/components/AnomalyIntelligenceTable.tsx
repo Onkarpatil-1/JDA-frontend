@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Collapse, Typography, Button, Pagination } from '@mui/material';
-import { ChevronDown, ChevronUp, Activity, Clock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import type { WorkflowStep } from '../types';
 
 interface AnomalyTableProps {

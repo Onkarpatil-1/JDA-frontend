@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
     Box,
     Typography,
@@ -13,10 +13,11 @@ import {
     TableHead,
     TableRow,
     Avatar,
-    LinearProgress,
     Pagination,
     alpha
 } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     Download,
     MapPin,
@@ -34,20 +35,36 @@ import {
 import { useProject } from '../context/ProjectContext';
 
 const CATEGORY_COLORS: Record<string, string> = {
-    'Documentation & Compliance Issues': '#6366f1',
-    'Process & Approval Bottlenecks': '#f59e0b',
-    'Communication & Coordination Gaps': '#10b981',
-    'External Dependencies & Third-Party Delays': '#ef4444',
-    'Internal System & Employee Issues': '#3b82f6',
-    Uncategorized: '#94a3b8'
+    'Documentation & Compliance Issues': '#4f46e5',
+    'Process & Approval Bottlenecks': '#d97706',
+    'Communication & Coordination Gaps': '#0ea5e9',
+    'External Dependencies & Third-Party Delays': '#8b5cf6',
+    'Internal System & Employee Issues': '#f43f5e',
+    Uncategorized: '#64748b'
 };
+
+const MarkdownWrapper = ({ content }: { content: string }) => (
+    <Box sx={{
+        '& p': { m: 0, mb: 1, '&:last-child': { mb: 0 } },
+        '& strong': { fontWeight: 700, color: 'inherit' },
+        '& ul, & ol': { pl: 2, m: 0, mb: 1 },
+        '& li': { mb: 0.5 },
+        color: 'inherit',
+        fontSize: 'inherit',
+        lineHeight: 'inherit'
+    }}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    </Box>
+);
 
 interface ZoneSummary {
     name: string;
     avgTime: number;
+    avgTotalDelay: number;
     onTime: number;
     ticketCount: number;
-    efficiencyScore: number;
+    internalDelay: number;
+    avgInternalDelay: number;
     documentationDelayRate: number;
 }
 
@@ -65,20 +82,21 @@ const KPICard = ({ title, value, subtext, accent, icon }: { title: string; value
         elevation={0}
         sx={{
             p: 3,
-            borderRadius: 3,
-            border: '1px solid #e2e8f0',
+            borderRadius: 2,
+            border: '1px solid #e5e7eb',
             bgcolor: 'white',
             display: 'flex',
             alignItems: 'center',
-            gap: 2
+            gap: 2.5,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
         }}
     >
         <Box
             sx={{
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 borderRadius: 2,
-                bgcolor: alpha(accent, 0.1),
+                bgcolor: alpha(accent, 0.08),
                 color: accent,
                 display: 'flex',
                 alignItems: 'center',
@@ -88,14 +106,14 @@ const KPICard = ({ title, value, subtext, accent, icon }: { title: string; value
             {icon}
         </Box>
         <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <Typography variant="overline" sx={{ color: '#6b7280', fontWeight: 600, letterSpacing: '0.08em', display: 'block', lineHeight: 1.2, mb: 0.5 }}>
                 {title}
             </Typography>
-            <Typography variant="h6" sx={{ color: '#0f172a', fontWeight: 800, mt: 0.5 }}>
+            <Typography variant="h5" sx={{ color: '#111827', fontWeight: 700, fontFamily: 'Outfit' }}>
                 {value}
             </Typography>
             {subtext && (
-                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, mt: 0.5, display: 'block' }}>
                     {subtext}
                 </Typography>
             )}
@@ -113,9 +131,9 @@ const ZoneTile = ({
     onClick: () => void;
 }) => {
     const getColor = (avgTime: number) => {
-        if (avgTime <= 3) return '#22c55e';
-        if (avgTime <= 7) return '#facc15';
-        return '#ef4444';
+        if (avgTime <= 3) return '#16a34a'; // Dark green
+        if (avgTime <= 7) return '#d97706'; // Amber
+        return '#dc2626'; // Dark red
     };
 
     const bg = getColor(zone.avgTime);
@@ -127,75 +145,62 @@ const ZoneTile = ({
             onClick={onClick}
             sx={{
                 p: 2.5,
-                borderRadius: 3,
+                borderRadius: 2,
                 cursor: 'pointer',
-                border: isActive ? `2px solid ${bg}` : '1px solid #e2e8f0',
-                bgcolor: isActive ? alpha(bg, 0.08) : 'white',
-                transition: 'all 0.2s ease',
+                border: '1px solid',
+                borderColor: isActive ? bg : '#e5e7eb',
+                borderLeft: `4px solid ${bg}`,
+                bgcolor: 'white',
+                transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: isActive ? '0 10px 15px -3px rgba(0,0,0,0.05)' : '0 1px 2px rgba(0,0,0,0.02)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                    boxShadow: '0 10px 25px rgba(15,23,42,0.08)',
-                    transform: 'translateY(-2px)'
+                    borderColor: isActive ? bg : '#d1d5db',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
                 }
             }}
         >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                 <Box>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontWeight: 700, letterSpacing: '0.12em' }}>
+                    <Typography variant="overline" sx={{ color: '#6b7280', fontWeight: 600, letterSpacing: '0.1em', lineHeight: 1 }}>
                         ZONE
                     </Typography>
                     <Typography
                         variant="h6"
-                        sx={{ fontWeight: 800, color: '#0f172a', mt: 0.25, lineHeight: 1 }}
+                        sx={{ fontWeight: 700, color: '#111827', mt: 0.5, fontFamily: 'Outfit' }}
                     >
                         {zoneLabel}
                     </Typography>
                 </Box>
                 <Chip
                     size="small"
+                    variant="outlined"
                     label={`${zone.ticketCount} tickets`}
                     sx={{
-                        height: 22,
-                        fontSize: '0.65rem',
+                        height: 24,
+                        fontSize: '0.7rem',
                         fontWeight: 600,
-                        borderRadius: '999px',
-                        bgcolor: '#0f172a',
-                        color: 'white'
+                        borderColor: '#e5e7eb',
+                        color: '#4b5563',
+                        bgcolor: '#f9fafb'
                     }}
                 />
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <Box>
-                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600 }}>
+                    <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, display: 'block', mb: 0.25 }}>
                         Avg Delay
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
-                        {zone.avgTime.toFixed(1)} days
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#111827' }}>
+                        {zone.avgTotalDelay.toFixed(0)} <Typography component="span" variant="caption" sx={{ color: '#6b7280' }}>days</Typography>
                     </Typography>
                 </Box>
-                <Box>
-                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600 }}>
-                        On-time %
+                <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, display: 'block', mb: 0.25 }}>
+                        Avg Internal Delay
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
-                        {zone.onTime.toFixed(1)}%
-                    </Typography>
-                </Box>
-                <Box sx={{ flex: 1, ml: 2 }}>
-                    <LinearProgress
-                        variant="determinate"
-                        value={zone.efficiencyScore}
-                        sx={{
-                            height: 6,
-                            borderRadius: 999,
-                            bgcolor: '#e5e7eb',
-                            '& .MuiLinearProgress-bar': {
-                                borderRadius: 999,
-                                bgcolor: bg
-                            }
-                        }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#6b7280', fontSize: '0.65rem', mt: 0.5, display: 'block', textAlign: 'right' }}>
-                        Efficiency {zone.efficiencyScore.toFixed(0)} / 100
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#111827' }}>
+                        {zone.avgInternalDelay.toFixed(0)} <Typography component="span" variant="caption" sx={{ color: '#6b7280' }}>days</Typography>
                     </Typography>
                 </Box>
             </Box>
@@ -261,13 +266,13 @@ const ErrorAnalysisPage = () => {
                     startIcon={<Download size={18} />}
                     sx={{
                         bgcolor: 'white',
-                        color: '#0f172a',
-                        fontWeight: 700,
-                        border: '1px solid #e2e8f0',
-                        boxShadow: 'none',
+                        color: '#111827',
+                        fontWeight: 600,
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                         px: 3,
-                        py: 1.5,
-                        borderRadius: 3,
+                        py: 1,
+                        borderRadius: 2,
                         '&:hover': {
                             bgcolor: '#f8fafc',
                             borderColor: '#cbd5e1',
@@ -284,26 +289,26 @@ const ErrorAnalysisPage = () => {
                 <Grid size={{ xs: 12, md: 6 }}>
                     <KPICard
                         title="Efficiency Alert"
-                        value={alertZone ? `${alertZone.name} (Avg ${alertZone.avgTime.toFixed(1)} days)` : 'No critical zone'}
+                        value={alertZone ? `${alertZone.name} (Avg ${alertZone.avgTime.toFixed(0)} days)` : 'No critical zone'}
                         subtext={
                             alertZone
                                 ? `${(alertZone.documentationDelayRate * 100).toFixed(0)}% of its delay is due to Documentation & Compliance`
                                 : 'No documentation-heavy delays detected'
                         }
-                        accent="#ef4444"
+                        accent="#dc2626"
                         icon={<AlertTriangle size={20} />}
                     />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
                     <KPICard
                         title="Top Performing Zone"
-                        value={bestZone ? `${bestZone.name} (Avg ${bestZone.avgTime.toFixed(1)} days)` : 'Awaiting data'}
+                        value={bestZone ? `${bestZone.name} (Avg ${bestZone.avgTime.toFixed(0)} days)` : 'Awaiting data'}
                         subtext={
                             bestZone
-                                ? `${bestZone.onTime.toFixed(1)}% on-time completion with balanced documentation handling`
+                                ? `${bestZone.onTime.toFixed(0)}% on-time completion with balanced documentation handling`
                                 : 'Upload and analyze data to view insights'
                         }
-                        accent="#22c55e"
+                        accent="#16a34a"
                         icon={<TrendingUp size={20} />}
                     />
                 </Grid>
@@ -314,37 +319,38 @@ const ErrorAnalysisPage = () => {
                 elevation={0}
                 sx={{
                     mb: 4,
-                    borderRadius: 4,
-                    border: '1px solid #e2e8f0',
+                    borderRadius: 2,
+                    border: '1px solid #e5e7eb',
                     bgcolor: 'white',
-                    p: 3
+                    p: 3,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                 }}
             >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                     <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontFamily: 'Outfit' }}>
                             Zone Efficiency Heatmap
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                        <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.25 }}>
                             Each tile represents one zone. Color intensity reflects average processing delay.
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 14, height: 8, borderRadius: 999, bgcolor: '#22c55e' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#16a34a' }} />
+                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
                                 Efficient (&lt;= 3 days)
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 14, height: 8, borderRadius: 999, bgcolor: '#facc15' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#d97706' }} />
+                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
                                 Moderate (3–7 days)
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 14, height: 8, borderRadius: 999, bgcolor: '#ef4444' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#dc2626' }} />
+                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
                                 Delayed (&gt; 7 days)
                             </Typography>
                         </Box>
@@ -372,10 +378,11 @@ const ErrorAnalysisPage = () => {
                             elevation={0}
                             sx={{
                                 p: 3,
-                                borderRadius: 4,
-                                border: '1px solid #e2e8f0',
+                                borderRadius: 2,
+                                border: '1px solid #e5e7eb',
                                 bgcolor: 'white',
-                                height: '100%'
+                                height: '100%',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
@@ -427,9 +434,10 @@ const ErrorAnalysisPage = () => {
                                             </Pie>
                                             <RechartsTooltip
                                                 contentStyle={{
-                                                    borderRadius: 12,
+                                                    borderRadius: 8,
                                                     border: '1px solid #e5e7eb',
-                                                    boxShadow: '0 10px 25px rgba(15,23,42,0.12)'
+                                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                                                    fontSize: '0.8rem'
                                                 }}
                                             />
                                         </PieChart>
@@ -485,17 +493,18 @@ const ErrorAnalysisPage = () => {
                             elevation={0}
                             sx={{
                                 p: 3,
-                                borderRadius: 4,
-                                border: '1px solid #e2e8f0',
-                                bgcolor: 'white'
+                                borderRadius: 2,
+                                border: '1px solid #e5e7eb',
+                                bgcolor: 'white',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                             }}
                         >
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Box>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontFamily: 'Outfit' }}>
                                         Employee Workload &amp; Delay Analysis
                                     </Typography>
-                                    <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                    <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.25 }}>
                                         Sorted by{' '}
                                         <strong>Documentation &amp; Compliance Issues</strong> share to highlight
                                         potential bottlenecks.
@@ -509,10 +518,11 @@ const ErrorAnalysisPage = () => {
                                         height: 26,
                                         fontSize: '0.7rem',
                                         fontWeight: 600,
-                                        bgcolor: '#0f172a',
-                                        color: 'white',
+                                        bgcolor: '#f9fafb',
+                                        color: '#4b5563',
+                                        border: '1px solid #e5e7eb',
                                         '& .MuiChip-icon': {
-                                            color: 'white'
+                                            color: '#4b5563'
                                         }
                                     }}
                                 />
@@ -521,22 +531,22 @@ const ErrorAnalysisPage = () => {
                             <TableContainer>
                                 <Table size="small">
                                     <TableHead>
-                                        <TableRow sx={{ bgcolor: '#f9fafb' }}>
-                                            <TableCell sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280' }}>
+                                        <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
                                                 EMPLOYEE
                                             </TableCell>
-                                            <TableCell sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280' }}>
+                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
                                                 ROLE
                                             </TableCell>
                                             <TableCell
                                                 align="right"
-                                                sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280' }}
+                                                sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
                                             >
                                                 TICKETS
                                             </TableCell>
                                             <TableCell
                                                 align="right"
-                                                sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280' }}
+                                                sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
                                             >
                                                 AVG DELAY (DAYS)
                                             </TableCell>
@@ -550,33 +560,38 @@ const ErrorAnalysisPage = () => {
                                                     <TableRow
                                                         key={emp.name}
                                                         sx={{
-                                                            '&:hover': { bgcolor: '#f9fafb' },
-                                                            bgcolor: isDocHeavy ? '#fef2f2' : 'inherit'
+                                                            transition: 'all 0.15s ease',
+                                                            '&:hover': { bgcolor: isDocHeavy ? '#fef2f2' : '#f8fafc' },
+                                                            borderLeft: isDocHeavy ? '3px solid #dc2626' : '3px solid transparent',
+                                                            bgcolor: isDocHeavy ? '#fefcfc' : 'inherit',
+                                                            '& td': { borderBottom: '1px solid #f1f5f9', py: 2 }
                                                         }}
                                                     >
                                                         <TableCell>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                                 <Avatar
                                                                     sx={{
-                                                                        width: 28,
-                                                                        height: 28,
+                                                                        width: 36,
+                                                                        height: 36,
                                                                         bgcolor: isDocHeavy
-                                                                            ? alpha('#ef4444', 0.1)
-                                                                            : '#0f172a',
-                                                                        color: isDocHeavy ? '#ef4444' : 'white',
-                                                                        fontSize: '0.75rem',
-                                                                        fontWeight: 700
+                                                                            ? alpha('#dc2626', 0.1)
+                                                                            : '#f8fafc',
+                                                                        color: isDocHeavy ? '#dc2626' : '#334155',
+                                                                        border: isDocHeavy ? '1px solid #fca5a5' : '1px solid #e2e8f0',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 700,
+                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                                                                     }}
                                                                 >
                                                                     {emp.name.charAt(0).toUpperCase()}
                                                                 </Avatar>
                                                                 <Box>
                                                                     <Typography
-                                                                        variant="body2"
+                                                                        variant="body1"
                                                                         sx={{
-                                                                            fontWeight: 700,
+                                                                            fontWeight: 600,
                                                                             color: '#0f172a',
-                                                                            maxWidth: 180,
+                                                                            maxWidth: 200,
                                                                             whiteSpace: 'nowrap',
                                                                             textOverflow: 'ellipsis',
                                                                             overflow: 'hidden'
@@ -590,7 +605,7 @@ const ErrorAnalysisPage = () => {
                                                                             sx={{
                                                                                 color: '#b91c1c',
                                                                                 fontWeight: 600,
-                                                                                fontSize: '0.65rem'
+                                                                                fontSize: '0.7rem'
                                                                             }}
                                                                         >
                                                                             High documentation-driven delay
@@ -599,28 +614,28 @@ const ErrorAnalysisPage = () => {
                                                                 </Box>
                                                             </Box>
                                                         </TableCell>
-                                                        <TableCell sx={{ fontSize: '0.75rem', color: '#4b5563' }}>
+                                                        <TableCell sx={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
                                                             {emp.role}
                                                         </TableCell>
-                                                        <TableCell align="right" sx={{ fontSize: '0.8rem' }}>
+                                                        <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                                                             {emp.ticketCount}
                                                         </TableCell>
                                                         <TableCell
                                                             align="right"
                                                             sx={{
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: emp.avgDelay > 10 ? 700 : 500,
-                                                                color: emp.avgDelay > 10 ? '#b91c1c' : '#111827'
+                                                                fontSize: '0.85rem',
+                                                                fontWeight: emp.avgDelay > 10 ? 700 : 600,
+                                                                color: emp.avgDelay > 10 ? '#b91c1c' : '#334155'
                                                             }}
                                                         >
-                                                            {emp.avgDelay.toFixed(1)}
+                                                            {emp.avgDelay.toFixed(0)}
                                                         </TableCell>
                                                     </TableRow>
                                                 );
                                             })
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={4} align="center" sx={{ py: 4, color: '#9ca3af' }}>
+                                                <TableCell colSpan={4} align="center" sx={{ py: 6, color: '#94a3b8' }}>
                                                     No employee-level delay patterns detected for this zone.
                                                 </TableCell>
                                             </TableRow>
@@ -651,44 +666,65 @@ const ErrorAnalysisPage = () => {
                     elevation={0}
                     sx={{
                         mt: 5,
-                        borderRadius: 4,
-                        border: '1px solid #e2e8f0',
+                        borderRadius: 2,
+                        border: '1px solid #e5e7eb',
                         bgcolor: 'white',
-                        p: 3.5
+                        p: 4,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                     }}
                 >
-                    <Box sx={{ mb: 2.5 }}>
+                    <Box sx={{ mb: 4 }}>
                         <Typography
-                            variant="caption"
+                            variant="overline"
                             sx={{
                                 fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.16em',
-                                color: '#9ca3af'
+                                letterSpacing: '0.1em',
+                                color: currentProject?.statistics?.aiInsights?.severity === 'CRITICAL' ? '#dc2626' : '#64748b',
+                                display: 'block',
+                                lineHeight: 1,
+                                mb: 1
                             }}
                         >
-                            Strategic Insights &amp; Recommendations
+                            AI FORRENSIC INSIGHTS &amp; STRATEGY
                         </Typography>
                         <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: 800, color: '#0f172a', mt: 0.75 }}
+                            variant="h4"
+                            sx={{ fontWeight: 800, color: '#0f172a', fontFamily: 'Outfit' }}
                         >
-                            Consolidated Action Matrix
+                            Strategic Performance Matrix
                         </Typography>
                     </Box>
+
+
+
+
 
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {/* Critical documentation hotspot */}
                         {alertZone && (
                             <Paper
                                 elevation={0}
+                                onClick={() => {
+                                    setSelectedZoneName(alertZone.name);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
                                 sx={{
                                     p: 2.5,
-                                    borderRadius: 3,
-                                    border: '1px solid #fee2e2',
-                                    bgcolor: '#fef2f2',
+                                    borderRadius: 2,
+                                    border: '1px solid #fecaca',
+                                    borderLeft: '4px solid #dc2626',
+                                    bgcolor: 'white',
                                     display: 'flex',
-                                    gap: 2
+                                    gap: 2,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                    '&:hover': {
+                                        borderColor: '#fca5a5',
+                                        bgcolor: '#fef2f2',
+                                        transform: 'translateY(-2px)',
+                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                                    }
                                 }}
                             >
                                 <Box
@@ -709,16 +745,17 @@ const ErrorAnalysisPage = () => {
                                 <Box>
                                     <Typography
                                         variant="subtitle2"
-                                        sx={{ fontWeight: 800, color: '#b91c1c', mb: 0.5 }}
+                                        sx={{ fontWeight: 700, color: '#b91c1c', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'Outfit', fontSize: '1rem' }}
                                     >
                                         Critical performance gap: {alertZone.name}
+                                        <Chip label="Click to view details" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', fontWeight: 600 }} />
                                     </Typography>
                                     <Typography
                                         variant="body2"
                                         sx={{ color: '#7f1d1d', fontSize: '0.8rem', mb: 0.75 }}
                                     >
                                         This zone shows elevated average delay of{' '}
-                                        <strong>{alertZone.avgTime.toFixed(1)} days</strong>, with a
+                                        <strong>{alertZone.avgTime.toFixed(0)} days</strong>, with a
                                         high concentration of documentation‑related bottlenecks. Tighten
                                         document checklist communication and approval SLAs for this zone.
                                     </Typography>
@@ -726,17 +763,68 @@ const ErrorAnalysisPage = () => {
                             </Paper>
                         )}
 
-                        {/* Efficiency blueprint */}
-                        {bestZone && (
+                        {/* AI Generated Recommendations */}
+                        {currentProject?.statistics?.aiInsights?.recommendations?.map((rec: string, index: number) => (
+                            <Paper
+                                key={`ai-rec-${index}`}
+                                elevation={0}
+                                sx={{
+                                    p: 2.5,
+                                    borderRadius: 2,
+                                    border: '1px solid #e2e8f0',
+                                    borderLeft: '4px solid #4f46e5',
+                                    bgcolor: 'white',
+                                    display: 'flex',
+                                    gap: 2,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                        borderColor: '#cbd5e1',
+                                        bgcolor: '#f8fafc',
+                                        transform: 'translateY(-2px)'
+                                    }
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 999,
+                                        bgcolor: alpha('#4f46e5', 0.1),
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#4f46e5',
+                                        flexShrink: 0,
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    {index + 1}
+                                </Box>
+                                <Box>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{ color: '#475569', fontSize: '0.925rem', lineHeight: 1.6 }}
+                                    >
+                                        <MarkdownWrapper content={rec} />
+                                    </Typography>
+                                </Box>
+                            </Paper>
+                        ))}
+
+                        {/* Efficiency blueprint (Keep as data-driven but style it) */}
+                        {bestZone && !currentProject?.statistics?.aiInsights?.recommendations?.length && (
                             <Paper
                                 elevation={0}
                                 sx={{
                                     p: 2.5,
-                                    borderRadius: 3,
+                                    borderRadius: 2,
                                     border: '1px solid #bbf7d0',
-                                    bgcolor: '#f0fdf4',
+                                    borderLeft: '4px solid #16a34a',
+                                    bgcolor: 'white',
                                     display: 'flex',
-                                    gap: 2
+                                    gap: 2,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                                 }}
                             >
                                 <Box
@@ -757,7 +845,7 @@ const ErrorAnalysisPage = () => {
                                 <Box>
                                     <Typography
                                         variant="subtitle2"
-                                        sx={{ fontWeight: 800, color: '#15803d', mb: 0.5 }}
+                                        sx={{ fontWeight: 700, color: '#15803d', mb: 0.5, fontFamily: 'Outfit', fontSize: '1rem' }}
                                     >
                                         Efficiency blueprint: {bestZone.name}
                                     </Typography>
@@ -775,21 +863,25 @@ const ErrorAnalysisPage = () => {
                             </Paper>
                         )}
 
-                        {/* Global documentation footprint */}
+                        {/* Global documentation footprint (Only show if AI recs are few or it's a major factor) */}
                         {(() => {
                             const docEntry = globalCategoryDistribution.find(
                                 c => c.name === 'Documentation & Compliance Issues'
                             );
+                            if (!docEntry || docEntry.percentage < 20) return null;
+
                             return (
                                 <Paper
                                     elevation={0}
                                     sx={{
                                         p: 2.5,
-                                        borderRadius: 3,
+                                        borderRadius: 2,
                                         border: '1px solid #e5e7eb',
-                                        bgcolor: '#f9fafb',
+                                        borderLeft: '4px solid #6b7280',
+                                        bgcolor: 'white',
                                         display: 'flex',
-                                        gap: 2
+                                        gap: 2,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                                     }}
                                 >
                                     <Box
@@ -809,18 +901,10 @@ const ErrorAnalysisPage = () => {
                                     </Box>
                                     <Box>
                                         <Typography
-                                            variant="subtitle2"
-                                            sx={{ fontWeight: 800, color: '#111827', mb: 0.5 }}
-                                        >
-                                            System‑wide documentation impact
-                                        </Typography>
-                                        <Typography
                                             variant="body2"
                                             sx={{ color: '#374151', fontSize: '0.8rem' }}
                                         >
-                                            {docEntry
-                                                ? `Across all zones, ${docEntry.percentage}% of analyzed tickets are primarily delayed due to Documentation & Compliance Issues. Introduce standard digital document verification and proactive applicant nudges to reduce this footprint.`
-                                                : 'Documentation & Compliance Issues are not a dominant primary delay driver in the current dataset. Focus improvement efforts on process, communication or external dependency gaps instead.'}
+                                            Across all zones, {docEntry.percentage}% of analyzed tickets are primarily delayed due to Documentation & Compliance Issues. Introduce standard digital document verification and proactive applicant nudges to reduce this footprint.
                                         </Typography>
                                     </Box>
                                 </Paper>
@@ -867,6 +951,7 @@ function useZoneAnalytics() {
         });
 
         const ticketsByZone = new Map<string, Set<string>>();
+        const workflowStepsByZone = new Map<string, any[]>();
         const employeesByZoneInternal = new Map<string, Map<string, { role: string; tickets: Set<string>; totalDelay: number; docIssues: number }>>();
         const categoriesByZoneInternal = new Map<string, Map<string, number>>();
         const globalCategories: Record<string, number> = {};
@@ -877,6 +962,11 @@ function useZoneAnalytics() {
                 ticketsByZone.set(zoneName, new Set());
             }
             ticketsByZone.get(zoneName)!.add(step.ticketId);
+
+            if (!workflowStepsByZone.has(zoneName)) {
+                workflowStepsByZone.set(zoneName, []);
+            }
+            workflowStepsByZone.get(zoneName)!.push(step);
 
             // Employee aggregation (exclude applicant / citizen actions everywhere)
             const remarksSource = (step.lifetimeRemarksFrom || '').toUpperCase();
@@ -951,19 +1041,60 @@ function useZoneAnalytics() {
             const docCount = catMap.get('Documentation & Compliance Issues') || 0;
             const documentationDelayRate = docCount / totalCatTickets;
 
-            const avgTime = perf.avgTime || 0;
-            const onTime = perf.onTime || 0;
-            const efficiencyScore = Math.max(0, Math.min(100, onTime - Math.min(avgTime * 2, 40) + 40));
+            // NEW: Calculate Total Delay based on Ticket Lifecycle (DeliveredOn - ApplicationDate)
+            let totalLifecycleDelay = 0;
+            let ticketsWithValidDates = 0;
+
+            tickets.forEach(ticketId => {
+                const ticketSteps = (workflowStepsByZone.get(zoneName) || []).filter(s => s.ticketId === ticketId);
+                if (ticketSteps.length === 0) return;
+
+                // Find dates (should be available in any step, but let's be safe)
+                const firstStep = ticketSteps[0];
+                const appDateStr = firstStep.applicationDate;
+                const delDateStr = firstStep.deliveredOn;
+
+                if (appDateStr && delDateStr && appDateStr !== 'NULL' && delDateStr !== 'NULL') {
+                    try {
+                        const start = new Date(appDateStr);
+                        const end = new Date(delDateStr);
+                        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                            const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                            if (diff >= 0) {
+                                totalLifecycleDelay += diff;
+                                ticketsWithValidDates++;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to parse dates for ticket ${ticketId}`);
+                    }
+                }
+            });
+
+            const avgTotalDelay = ticketsWithValidDates > 0 ? totalLifecycleDelay / ticketsWithValidDates : 0;
+            let internalDelay = 0;
+            const zoneEmployees = employeesByZoneInternal.get(zoneName);
+
+            if (zoneEmployees) {
+                zoneEmployees.forEach((emp: any) => {
+                    internalDelay += emp.totalDelay;
+                });
+            }
+
+            const ticketCount = tickets.size;
+            const avgInternalDelay = ticketCount > 0 ? internalDelay / ticketCount : 0;
 
             return {
                 name: zoneName,
-                avgTime,
-                onTime,
-                ticketCount: tickets.size,
-                efficiencyScore,
+                avgTime: perf.avgTime || 0,
+                avgTotalDelay,
+                onTime: perf.onTime || 0,
+                ticketCount,
+                internalDelay,
+                avgInternalDelay,
                 documentationDelayRate
             };
-        }).sort((a, b) => a.avgTime - b.avgTime);
+        }).sort((a, b) => a.avgTotalDelay - b.avgTotalDelay);
 
         // Employees mapped to table rows per zone
         const employeesByZone: Record<string, EmployeeRowData[]> = {};
