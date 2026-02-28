@@ -323,7 +323,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                         renderValue={(selected) => (
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <Microscope size={16} />
-                                                {selected === 'ollama' ? 'Llama 3.2' :
+                                                {selected === 'ollama' ? 'Llama 3 8B' :
                                                     selected === 'openai' ? 'GPT-4o' :
                                                         selected === 'gemini' ? 'Gemini' :
                                                             selected === 'claude' ? 'Claude' : selected}
@@ -332,7 +332,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                     >
                                         <MenuItem value="ollama">
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                <Typography variant="body2">Llama 3.2</Typography>
+                                                <Typography variant="body2">Llama 3 8B</Typography>
                                                 <Typography variant="caption" color="text.secondary">Local (Private)</Typography>
                                             </Box>
                                         </MenuItem>

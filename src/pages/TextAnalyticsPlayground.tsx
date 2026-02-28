@@ -30,6 +30,7 @@ interface ForensicAnalysis {
         documentClarityAnalysis?: {
             documentClarityProvided: boolean;
             documentNames: string[];
+            documentDetails?: Array<{ name: string; exactMatch: string; quote: string }>;
         };
         categorySummary: string;
         allApplicableCategories: Array<{
@@ -46,6 +47,13 @@ interface ForensicAnalysis {
             evidence: string;
             recommendation: string;
         }>;
+        categoryClassification?: {
+            primaryCategory: string;
+            confidence: number;
+            reasoning: string;
+            contributingFactors: string[];
+            delayBreakdown: string;
+        };
     };
     overallRemarkAnalysis?: {
         employeeRemarksOverall: {
@@ -280,9 +288,9 @@ Notification sent to applicant"
 
                     <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
                         {/* Summary Header */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, pb: 4, borderBottom: '1px solid #f1f5f9' }}>
-                            <Box>
-                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', mb: 1, display: 'block' }}>PRIMARY CATEGORY</Typography>
+                        <Box sx={{ mb: 4, pb: 4, borderBottom: '1px solid #f1f5f9' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', mb: 1, display: 'block' }}>PRIMARY CATEGORY</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: result.delayAnalysis?.categoryClassification ? 3 : 0 }}>
                                 <Chip
                                     label={result.delayAnalysis?.primaryDelayCategory || "Uncategorized"}
                                     sx={{
@@ -294,8 +302,73 @@ Notification sent to applicant"
                                         height: 32
                                     }}
                                 />
+                                {result.delayAnalysis?.categoryClassification && (
+                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                                        Confidence: {(result.delayAnalysis.categoryClassification.confidence * 100).toFixed(0)}%
+                                    </Typography>
+                                )}
                             </Box>
 
+                            {/* NEW: Detailed Category Classification Output */}
+                            {result.delayAnalysis?.categoryClassification && (
+                                <Grid container spacing={3} sx={{ mt: 2 }}>
+                                    <Grid size={{ xs: 12, md: 7 }}>
+                                        <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, borderLeft: '3px solid #6366f1' }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#6366f1', display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>
+                                                AI CLASSIFICATION REASONING
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.6 }}>
+                                                {result.delayAnalysis.categoryClassification.reasoning}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 5 }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <Box>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', display: 'block', mb: 0.5 }}>DELAY BREAKDOWN</Typography>
+                                                <Typography variant="body2" sx={{ color: '#0f172a', fontWeight: 500 }}>
+                                                    {result.delayAnalysis.categoryClassification.delayBreakdown}
+                                                </Typography>
+                                            </Box>
+                                            {result.delayAnalysis.categoryClassification.contributingFactors.length > 0 && (
+                                                <Box>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', display: 'block', mb: 1 }}>CONTRIBUTING FACTORS</Typography>
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                        {result.delayAnalysis.categoryClassification.contributingFactors.map((factor, idx) => (
+                                                            <Chip key={idx} label={factor} size="small" variant="outlined" sx={{ borderRadius: 1.5, fontSize: '0.7rem' }} />
+                                                        ))}
+                                                    </Box>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            )}
+
+                            {/* Documents Involved */}
+                            {(result.delayAnalysis?.documentClarityAnalysis?.documentDetails?.length ? result.delayAnalysis.documentClarityAnalysis.documentDetails.length > 0 : false || result.delayAnalysis?.documentClarityAnalysis?.documentNames?.length ? result.delayAnalysis.documentClarityAnalysis.documentNames.length > 0 : false) && (
+                                <Box sx={{ mt: 3, p: 2, bgcolor: '#fefce8', borderRadius: 2, border: '1px solid #facc15' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ca8a04', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', mb: 1 }}>
+                                        Document(s) Involved
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                        {result.delayAnalysis?.documentClarityAnalysis?.documentDetails && result.delayAnalysis.documentClarityAnalysis.documentDetails.length > 0 ? (
+                                            result.delayAnalysis.documentClarityAnalysis.documentDetails.map((detail, idx) => (
+                                                <Chip
+                                                    key={idx}
+                                                    label={detail.exactMatch && detail.exactMatch !== detail.name ? `${detail.name} ("${detail.exactMatch}")` : detail.name}
+                                                    size="small"
+                                                    sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.75rem' }}
+                                                />
+                                            ))
+                                        ) : (
+                                            result.delayAnalysis?.documentClarityAnalysis?.documentNames?.map((name, idx) => (
+                                                <Chip key={idx} label={name} size="small" sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.75rem' }} />
+                                            ))
+                                        )}
+                                    </Box>
+                                </Box>
+                            )}
                         </Box>
 
                         <Grid container spacing={4}>

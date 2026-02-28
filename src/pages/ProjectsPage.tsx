@@ -108,7 +108,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
                                             renderValue={(selected) => (
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <BrainCircuit size={16} />
-                                                    {selected === 'ollama' ? 'Llama 3.2 (Local)' :
+                                                    {selected === 'ollama' ? 'Llama 3 8B (Local)' :
                                                         selected === 'openai' ? 'GPT-4o' :
                                                             selected === 'gemini' ? 'Gemini 1.5 Pro' :
                                                                 selected === 'claude' ? 'Claude 3.5 Sonnet' : selected}

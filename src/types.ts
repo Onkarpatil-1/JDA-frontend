@@ -165,6 +165,7 @@ export interface ForensicAnalysis {
         documentClarityAnalysis: {
             documentClarityProvided: boolean;
             documentNames: string[];
+            documentDetails?: Array<{ name: string; exactMatch: string; quote: string }>;
         };
         categorySummary: string;
         allApplicableCategories: Array<{
@@ -181,6 +182,13 @@ export interface ForensicAnalysis {
             evidence: string;
             recommendation: string;
         }>;
+        categoryClassification?: {
+            primaryCategory: string;
+            confidence: number;
+            reasoning: string;
+            contributingFactors: string[];
+            delayBreakdown: string;
+        };
     };
     sentimentSummary: string;
     ticketInsightSummary: string;

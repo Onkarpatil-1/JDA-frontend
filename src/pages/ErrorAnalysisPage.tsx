@@ -14,7 +14,9 @@ import {
     TableRow,
     Avatar,
     Pagination,
-    alpha
+    alpha,
+    Menu,
+    MenuItem
 } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,7 +25,8 @@ import {
     MapPin,
     AlertTriangle,
     TrendingUp,
-    Users
+    Users,
+    ChevronDown
 } from 'lucide-react';
 import {
     PieChart,
@@ -33,6 +36,8 @@ import {
     Tooltip as RechartsTooltip
 } from 'recharts';
 import { useProject } from '../context/ProjectContext';
+import { generateZoneReportPDF } from '../utils/pdfExport';
+import API_BASE from '../lib/api';
 
 const CATEGORY_COLORS: Record<string, string> = {
     'Documentation & Compliance Issues': '#4f46e5',
@@ -211,6 +216,8 @@ const ZoneTile = ({
 const ErrorAnalysisPage = () => {
     const { currentProject } = useProject();
     const [page, setPage] = useState(1);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
     const pageSize = 6;
 
     const {
@@ -240,6 +247,68 @@ const ErrorAnalysisPage = () => {
         setPage(1);
     }, [selectedZoneName]);
 
+    const handleExportClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        setExportAnchorEl(event.currentTarget);
+    };
+
+    const handleExportClose = () => {
+        setExportAnchorEl(null);
+    };
+
+    const handleDownloadReport = async (zoneName: string) => {
+        handleExportClose();
+        if (!currentProject) return;
+        setIsExporting(true);
+        try {
+            // 1. Call backend for AI outlier analysis
+            let outlierReport: any = undefined;
+            try {
+                const res = await fetch(`${API_BASE}/project/${currentProject.metadata.id}/zone-outlier-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aiProvider: 'ollama' })
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    outlierReport = json.report;
+                } else {
+                    console.warn('Zone outlier backend call failed, generating PDF with stats only.');
+                }
+            } catch (fetchErr) {
+                console.warn('Could not reach backend for outlier report, generating PDF with stats only.', fetchErr);
+            }
+
+            // 2. Generate PDF with outlier data (or without if fetch failed)
+            generateZoneReportPDF({
+                projectName: currentProject.metadata.name,
+                date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                targetZoneName: zoneName,
+                overallStats: {
+                    totalTickets: currentProject.statistics.totalTickets,
+                    avgProcessingTime: currentProject.metadata.avgProcessingTime,
+                    completionRate: currentProject.statistics.completionRate
+                },
+                alertZone: alertZone ? {
+                    name: alertZone.name,
+                    avgTime: alertZone.avgTime,
+                    docDelayRate: alertZone.documentationDelayRate
+                } : undefined,
+                bestZone: bestZone ? {
+                    name: bestZone.name,
+                    avgTime: bestZone.avgTime,
+                    onTimeRate: bestZone.onTime
+                } : undefined,
+                aiInsights: currentProject.statistics.aiInsights,
+                zones: zones.filter(z => z.name === zoneName),
+                outlierReport
+            });
+        } catch (error) {
+            console.error('Failed to generate PDF:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <Box sx={{ pb: 8 }}>
             {/* Header */}
@@ -261,27 +330,72 @@ const ErrorAnalysisPage = () => {
                         <strong>Documentation &amp; Compliance Issues</strong> for each zone and employee.
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<Download size={18} />}
-                    sx={{
-                        bgcolor: 'white',
-                        color: '#111827',
-                        fontWeight: 600,
-                        border: '1px solid #e5e7eb',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                        px: 3,
-                        py: 1,
-                        borderRadius: 2,
-                        '&:hover': {
-                            bgcolor: '#f8fafc',
-                            borderColor: '#cbd5e1',
-                            boxShadow: 'none'
-                        }
-                    }}
-                >
-                    Download Zone Report
-                </Button>
+                <Box>
+                    <Button
+                        variant="contained"
+                        startIcon={<Download size={18} />}
+                        endIcon={<ChevronDown size={16} />}
+                        onClick={handleExportClick}
+                        disabled={isExporting}
+                        sx={{
+                            bgcolor: 'white',
+                            color: '#111827',
+                            fontWeight: 600,
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                            px: 3,
+                            py: 1,
+                            borderRadius: 2,
+                            '&:hover': {
+                                bgcolor: '#f8fafc',
+                                borderColor: '#cbd5e1',
+                                boxShadow: 'none'
+                            }
+                        }}
+                    >
+                        {isExporting ? 'Generating...' : 'Download Zone Report'}
+                    </Button>
+                    <Menu
+                        anchorEl={exportAnchorEl}
+                        open={Boolean(exportAnchorEl)}
+                        onClose={handleExportClose}
+                        sx={{ mt: 1 }}
+                        PaperProps={{
+                            elevation: 0,
+                            sx: {
+                                overflow: 'visible',
+                                filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
+                                border: '1px solid #e5e7eb',
+                                minWidth: 240,
+                                maxHeight: 360,
+                                borderRadius: 2
+                            }
+                        }}
+                    >
+                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9', mb: 1, bgcolor: '#f8fafc' }}>
+                            <Typography variant="overline" sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', lineHeight: 1 }}>
+                                SELECT A ZONE TO EXPORT
+                            </Typography>
+                        </Box>
+                        {zones.map(z => (
+                            <MenuItem
+                                key={z.name}
+                                onClick={() => handleDownloadReport(z.name)}
+                                sx={{
+                                    fontSize: '0.875rem',
+                                    py: 1.5,
+                                    px: 2,
+                                    fontWeight: 500,
+                                    color: '#334155',
+                                    borderBottom: '1px solid #f8fafc',
+                                    '&:hover': { bgcolor: '#f1f5f9' }
+                                }}
+                            >
+                                {z.name}
+                            </MenuItem>
+                        ))}
+                    </Menu>
+                </Box>
             </Box>
 
             {/* Alert + Top Zone */}

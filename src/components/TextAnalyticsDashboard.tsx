@@ -42,6 +42,13 @@ function getDocumentNamesForTicket(ticket: any): string[] {
     return info.documentNames;
 }
 
+function getDocumentDetailsForTicket(ticket: any): Array<{ name: string; exactMatch: string; quote: string }> {
+    const info = ticket?.forensicAnalysis?.delayAnalysis?.documentClarityAnalysis;
+    if (!info) return [];
+    if (!Array.isArray(info.documentDetails)) return [];
+    return info.documentDetails;
+}
+
 const DEPT_COLORS: Record<string, string> = {
     'TOWN PLANNING': '#6366f1',
     'REVENUE SECTION': '#10b981',
@@ -107,22 +114,72 @@ const TextAnalyticsDashboard: React.FC = () => {
         const totalCount = allTickets.length;
 
         const aiInsights = currentProject.statistics.aiInsights;
-
-        // Extract Process Gaps and Pain Points from the new detailed structure OR legacy structure
-        // Cast to any to handle the transition between old and new types gracefully
         const analysis = aiInsights?.remarkAnalysis as any;
 
-        // PRIORITIZE NEW "OVERALL" ANALYSIS if available
-        let processGaps = analysis?.overallRemarkAnalysis?.employeeRemarksOverall?.topEmployeeActions || [];
-        let painPoints = analysis?.overallRemarkAnalysis?.applicantRemarksOverall?.topApplicantConcerns || [];
+        let processGaps: string[] = [];
+        let painPoints: string[] = [];
 
-        // Fallback to old structure if new one is missing
-        if (!processGaps || processGaps.length === 0) {
-            processGaps = analysis?.delayAnalysis?.processGaps || analysis?.processGaps || [];
+        // Helper to add a string item safely to a set-backed list
+        const addIfNew = (list: string[], seen: Set<string>, item: any) => {
+            if (typeof item !== 'string') return;
+            const clean = item.trim();
+            if (clean.length <= 5 || seen.has(clean)) return;
+            const isSchemaText = clean.startsWith('MINIMUM') || clean.includes('BAD:') || clean.includes('GOOD:') || clean.includes('REQUIRED.');
+            if (!isSchemaText) { seen.add(clean); list.push(clean); }
+        };
+
+        // AGGREGATE from ALL forensicReports across all tickets
+        if (aiInsights?.forensicReports && Object.keys(aiInsights.forensicReports).length > 0) {
+            const seenActions = new Set<string>();
+            const seenConcerns = new Set<string>();
+
+            Object.values(aiInsights.forensicReports).forEach((report: any) => {
+                const emp = report?.overallRemarkAnalysis?.employeeRemarksOverall;
+                const app = report?.overallRemarkAnalysis?.applicantRemarksOverall;
+                const empAnalysis = report?.employeeRemarkAnalysis;
+
+                // Employee bottlenecks — pull from richest available fields
+                [
+                    ...(emp?.commonThemes || []),
+                    ...(emp?.inactionPatterns || []),
+                    ...(empAnalysis?.keyActions || []),
+                    ...(emp?.topEmployeeActions || []),
+                ].forEach(a => addIfNew(processGaps, seenActions, a));
+
+                // Applicant pain points — pull from richest available fields
+                [
+                    ...(app?.commonThemes || []),
+                    ...(app?.delayPatterns || []),
+                    ...(app?.topApplicantConcerns || []),
+                ].forEach(c => addIfNew(painPoints, seenConcerns, c));
+            });
+
+            // Sort by specificity (longer = more specific)
+            processGaps.sort((a, b) => b.length - a.length);
+            painPoints.sort((a, b) => b.length - a.length);
         }
-        if (!painPoints || painPoints.length === 0) {
-            painPoints = analysis?.delayAnalysis?.painPoints || analysis?.painPoints || [];
+
+        // Fallback: single remarkAnalysis (legacy)
+        if (processGaps.length === 0) {
+            [
+                ...(analysis?.overallRemarkAnalysis?.employeeRemarksOverall?.commonThemes || []),
+                ...(analysis?.overallRemarkAnalysis?.employeeRemarksOverall?.topEmployeeActions || []),
+                ...(analysis?.delayAnalysis?.processGaps || analysis?.processGaps || []),
+            ].forEach(item => {
+                if (typeof item === 'string' && item.trim().length > 5) processGaps.push(item);
+            });
         }
+        if (painPoints.length === 0) {
+            [
+                ...(analysis?.overallRemarkAnalysis?.applicantRemarksOverall?.commonThemes || []),
+                ...(analysis?.overallRemarkAnalysis?.applicantRemarksOverall?.delayPatterns || []),
+                ...(analysis?.overallRemarkAnalysis?.applicantRemarksOverall?.topApplicantConcerns || []),
+                ...(analysis?.delayAnalysis?.painPoints || analysis?.painPoints || []),
+            ].forEach(item => {
+                if (typeof item === 'string' && item.trim().length > 5) painPoints.push(item);
+            });
+        }
+
 
         // Identify the "Spotlight Ticket" (Likely the one with the highest delay)
         // The backend analyzes the single highest risk application.
@@ -722,21 +779,28 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                     </Box>
                 </TableCell>
                 <TableCell>
-                    <Chip
-                        label={getPrimaryCategory(ticket)}
-                        size="small"
-                        sx={{
-                            height: 26,
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            bgcolor: 'white',
-                            color: CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#6366f1',
-                            border: `1.5px solid ${CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#06b6d4'}`,
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                            '& .MuiChip-label': { px: 1.5 }
-                        }}
-                    />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+                        <Chip
+                            label={getPrimaryCategory(ticket)}
+                            size="small"
+                            sx={{
+                                height: 26,
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                bgcolor: 'white',
+                                color: CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#6366f1',
+                                border: `1.5px solid ${CATEGORY_COLORS[getPrimaryCategory(ticket)] || '#06b6d4'}`,
+                                borderRadius: '8px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                '& .MuiChip-label': { px: 1.5 }
+                            }}
+                        />
+                        {ticket.forensicAnalysis?.delayAnalysis?.categoryClassification?.confidence && (
+                            <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.65rem', fontWeight: 600 }}>
+                                Conf: {(ticket.forensicAnalysis.delayAnalysis.categoryClassification.confidence * 100).toFixed(0)}%
+                            </Typography>
+                        )}
+                    </Box>
                 </TableCell>
                 <TableCell sx={{ color: '#475569', fontSize: '0.75rem', fontWeight: 600 }}>
                     {ticket.parentService}
@@ -778,6 +842,44 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                                             </Typography>
                                         </Box>
                                     </Grid>
+
+                                    {/* AI Category Classification block */}
+                                    {forensicAnalysis.delayAnalysis?.categoryClassification && (
+                                        <Grid size={{ xs: 12 }}>
+                                            <Grid container spacing={3}>
+                                                <Grid size={{ xs: 12, md: 7 }}>
+                                                    <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 2, borderLeft: '3px solid #6366f1', borderTop: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                                                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#6366f1', display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>
+                                                            AI FORENSIC REASONING (CATEGORY)
+                                                        </Typography>
+                                                        <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.6 }}>
+                                                            {forensicAnalysis.delayAnalysis.categoryClassification.reasoning}
+                                                        </Typography>
+                                                    </Box>
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 5 }}>
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                        <Box>
+                                                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', display: 'block', mb: 0.5 }}>DELAY SUMMARY</Typography>
+                                                            <Typography variant="body2" sx={{ color: '#0f172a', fontWeight: 500 }}>
+                                                                {forensicAnalysis.delayAnalysis.categoryClassification.delayBreakdown}
+                                                            </Typography>
+                                                        </Box>
+                                                        {forensicAnalysis.delayAnalysis.categoryClassification.contributingFactors?.length > 0 && (
+                                                            <Box>
+                                                                <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', display: 'block', mb: 1 }}>CONTRIBUTING FACTORS</Typography>
+                                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                                    {forensicAnalysis.delayAnalysis.categoryClassification.contributingFactors.map((factor: string, idx: number) => (
+                                                                        <Chip key={idx} label={factor} size="small" variant="outlined" sx={{ borderRadius: 1.5, fontSize: '0.7rem' }} />
+                                                                    ))}
+                                                                </Box>
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                </Grid>
+                                            </Grid>
+                                        </Grid>
+                                    )}
                                     {getDocumentNamesForTicket(ticket).length > 0 && (
                                         <Grid size={{ xs: 12 }}>
                                             <Box sx={{ mb: 2, p: 2, bgcolor: '#fefce8', borderRadius: 2, border: '1px solid #facc15' }}>
@@ -785,9 +887,20 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                                                     Document(s) Involved
                                                 </Typography>
                                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                                    {getDocumentNamesForTicket(ticket).map((name: string, idx: number) => (
-                                                        <Chip key={idx} label={name} size="small" sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.7rem' }} />
-                                                    ))}
+                                                    {getDocumentDetailsForTicket(ticket).length > 0 ? (
+                                                        getDocumentDetailsForTicket(ticket).map((detail, idx: number) => (
+                                                            <Chip
+                                                                key={idx}
+                                                                label={detail.exactMatch && detail.exactMatch !== detail.name ? `${detail.name} ("${detail.exactMatch}")` : detail.name}
+                                                                size="small"
+                                                                sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.7rem' }}
+                                                            />
+                                                        ))
+                                                    ) : (
+                                                        getDocumentNamesForTicket(ticket).map((name: string, idx: number) => (
+                                                            <Chip key={idx} label={name} size="small" sx={{ bgcolor: '#fff7ed', color: '#9a3412', fontWeight: 600, fontSize: '0.7rem' }} />
+                                                        ))
+                                                    )}
                                                 </Box>
                                             </Box>
                                         </Grid>
