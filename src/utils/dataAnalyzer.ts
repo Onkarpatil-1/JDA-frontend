@@ -109,10 +109,10 @@ export function buildJDAHierarchy(steps: WorkflowStep[], existingHierarchy?: JDA
                             ticketId: t.ticketId,
                             stepOwnerName: t.employeeName || 'Unknown',
                             stepOwnerRole: t.post,
-                            remarkOriginal: t.lifetimeRemarksFrom || 'No remarks',
+                            remarkOriginal: t.lifetimeRemarks || 'No remarks',
                             // PRESERVE AI SUMMARY IF AVAILABLE, else default
-                            remarkEnglishSummary: aiEnrichedTickets.has(t.ticketId) ? aiData?.summary : (t.lifetimeRemarksFrom || 'No remarks'),
-                            detectedCategory: aiEnrichedTickets.has(t.ticketId) ? aiData?.category : ruleBasedDelayClassification(t.lifetimeRemarksFrom || ''),
+                            remarkEnglishSummary: aiEnrichedTickets.has(t.ticketId) ? aiData?.summary : (t.lifetimeRemarks || 'No remarks'),
+                            detectedCategory: aiEnrichedTickets.has(t.ticketId) ? aiData?.category : ruleBasedDelayClassification(t.lifetimeRemarks || ''),
                             daysRested: t.totalDaysRested,
                             deliveredOn: t.deliveredOn || ''
                         };

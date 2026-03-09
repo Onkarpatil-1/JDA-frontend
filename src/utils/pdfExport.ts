@@ -6,7 +6,6 @@ interface OutlierTicket {
     ticketId: string;
     zone: string;
     primaryCategory: 'Analytical Outlier' | 'Behavioral Outlier';
-    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     confidence: number;
     outlierSummary: string;
     rootCause: string;
@@ -24,7 +23,6 @@ interface OutlierZoneSummary {
     totalTickets: number;
     analyticalOutliers: number;
     behavioralOutliers: number;
-    criticalCount: number;
     topRecommendation: string;
 }
 
@@ -32,6 +30,15 @@ interface ZoneOutlierReportData {
     executiveSummary: string;
     zoneSummary: OutlierZoneSummary[];
     ticketReports: OutlierTicket[];
+}
+
+interface EmployeeData {
+    name: string;
+    role: string;
+    ticketCount: number;
+    avgDelay: number;
+    documentationIssues: number;
+    documentationShare: number;
 }
 
 interface ZoneReportData {
@@ -56,45 +63,37 @@ interface ZoneReportData {
     bestZone?: { name: string; avgTime: number; onTimeRate: number };
     aiInsights?: any;
     outlierReport?: ZoneOutlierReportData;
+    employees?: EmployeeData[];
 }
 
-// ─── Enterprise Color System ────────────────────────────────────────────────
+// ─── Pure Monochrome / Grayscale Color System ────────────────────────────────────────────────
 const C = {
-    ink: [15, 23, 42] as [number, number, number],      // Slate 900
-    inkSoft: [51, 65, 85] as [number, number, number],  // Slate 700
-    muted: [100, 116, 139] as [number, number, number], // Slate 500
-    subtle: [148, 163, 184] as [number, number, number],// Slate 400
-    rule: [226, 232, 240] as [number, number, number],  // Slate 200
-    surface: [248, 250, 252] as [number, number, number],// Slate 50
+    ink: [0, 0, 0] as [number, number, number],      // Near Black
+    inkSoft: [64, 64, 64] as [number, number, number],  // Dark Gray
+    muted: [128, 128, 128] as [number, number, number], // Med Gray
+    subtle: [192, 192, 192] as [number, number, number],// Light Gray
+    rule: [224, 224, 224] as [number, number, number],  // Very Light Gray
+    surface: [248, 248, 248] as [number, number, number],// Off-white
     white: [255, 255, 255] as [number, number, number],
 
-    // Accent – Enterprise Indigo
-    accent: [67, 56, 202] as [number, number, number],  // Indigo 700
-    accentLight: [99, 102, 241] as [number, number, number],// Indigo 500
-    accentBg: [238, 242, 255] as [number, number, number],  // Indigo 50
+    // Accent – Minimalist Black/Grey
+    accent: [0, 0, 0] as [number, number, number],
+    accentLight: [64, 64, 64] as [number, number, number],
+    accentBg: [240, 240, 240] as [number, number, number],
 
-    // Status / Alerts
-    critical: [190, 18, 60] as [number, number, number], // Rose 700
-    critBg: [255, 241, 242] as [number, number, number], // Rose 50
-    high: [194, 65, 12] as [number, number, number],   // Amber 700
-    highBg: [255, 251, 235] as [number, number, number], // Amber 50
-    medium: [3, 105, 161] as [number, number, number],  // Sky 700
-    medBg: [240, 249, 255] as [number, number, number],  // Sky 50
-    low: [5, 150, 105] as [number, number, number],   // Emerald 600
-    lowBg: [236, 253, 245] as [number, number, number],  // Emerald 50
+    // Status / Alerts - Muted tones
+    critical: [0, 0, 0] as [number, number, number],
+    critBg: [224, 224, 224] as [number, number, number],
+    high: [64, 64, 64] as [number, number, number],
+    highBg: [240, 240, 240] as [number, number, number],
+    medium: [128, 128, 128] as [number, number, number],
+    medBg: [248, 248, 248] as [number, number, number],
+    low: [160, 160, 160] as [number, number, number],
+    lowBg: [255, 255, 255] as [number, number, number],
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 type Weight = 'bold' | 'normal' | 'italic';
-
-const severityMeta = (s: string) => {
-    switch (s) {
-        case 'CRITICAL': return { fg: C.critical, bg: C.critBg, label: 'CRITICAL' };
-        case 'HIGH': return { fg: C.high, bg: C.highBg, label: 'HIGH' };
-        case 'MEDIUM': return { fg: C.medium, bg: C.medBg, label: 'MEDIUM' };
-        default: return { fg: C.low, bg: C.lowBg, label: 'LOW' };
-    }
-};
 
 export const generateZoneReportPDF = (data: ZoneReportData) => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -103,13 +102,27 @@ export const generateZoneReportPDF = (data: ZoneReportData) => {
     const ML = 15; // margin-left 
     const MR = 15; // margin-right
     const CW = PW - ML - MR;
-    const colW = CW / 12; // 12-col grid
     let Y = 0;
 
     // ── Primitive tools ──────────────────────────────────────────────
     const T = (text: string, x: number, y: number, size: number, color: [number, number, number], weight: Weight = 'normal') => {
         doc.setFontSize(size); doc.setFont('helvetica', weight); doc.setTextColor(...color);
         doc.text(text, x, y);
+    };
+
+    const paragraph = (text: string, size: number, color: [number, number, number], maxWidth: number) => {
+        if (!text || !text.trim()) return;
+        doc.setFontSize(size);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...color);
+
+        // Split by double newline to handle paragraphs
+        const paragraphs = text.split(/\n\n+/);
+        paragraphs.forEach(p => {
+            const lines = doc.splitTextToSize(p.trim(), maxWidth);
+            doc.text(lines, ML, Y);
+            Y += lines.length * (size * 0.45) + 4; // Extra space between paragraphs
+        });
     };
 
     const rect = (x: number, y: number, w: number, h: number, fill?: [number, number, number], stroke?: [number, number, number], r = 0) => {
@@ -127,18 +140,6 @@ export const generateZoneReportPDF = (data: ZoneReportData) => {
         doc.setLineWidth(0.1);
     };
 
-    const guard = (needed: number, title?: string) => {
-        if (Y + needed > PH - 20) {
-            doc.addPage(); Y = 15;
-            if (title) {
-                T(title, ML, Y, 7, C.subtle, 'bold');
-                rule(Y + 2); Y += 6;
-            }
-            return true;
-        }
-        return false;
-    };
-
     // ── UI Components ──────────────────────────────────────────────
     const sectionHeader = (title: string) => {
         Y += 2;
@@ -147,212 +148,332 @@ export const generateZoneReportPDF = (data: ZoneReportData) => {
         Y += 8;
     };
 
+    const hexToRgb = (hex: string): [number, number, number] => {
+        const h = hex.replace('#', '');
+        return [
+            parseInt(h.substring(0, 2), 16),
+            parseInt(h.substring(2, 4), 16),
+            parseInt(h.substring(4, 6), 16)
+        ];
+    };
+
+    const drawHeatmap = (zones: any[]) => {
+        sectionHeader('Zone Efficiency Heatmap');
+        const cols = 3;
+        const gap = 3;
+        const tileW = (CW - (gap * (cols - 1))) / cols;
+        const tileH = 18;
+
+        let startX = ML;
+        let startY = Y;
+
+        zones.forEach((z, i) => {
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const x = startX + col * (tileW + gap);
+            const y = startY + row * (tileH + gap);
+
+            // Check page overflow
+            if (y + tileH > PH - 20) {
+                doc.addPage();
+                Y = 20;
+                startY = Y;
+                // Re-calculate row since we reset startY
+                // Actually easier to just update Y and reset the loop logic's reference
+            }
+
+            const val = z.avgInternalDelay;
+            let bgColor: [number, number, number] = [21, 128, 61]; // Success Green
+
+            if (val > 20) {
+                const lerp = (c1: [number, number, number], c2: [number, number, number], w: number): [number, number, number] => [
+                    Math.round(c1[0] + (c2[0] - c1[0]) * w),
+                    Math.round(c1[1] + (c2[1] - c1[1]) * w),
+                    Math.round(c1[2] + (c2[2] - c1[2]) * w)
+                ];
+
+                const GREEN = hexToRgb('#15803d');
+                const AMBER = hexToRgb('#d97706');
+                const RED = hexToRgb('#991b1b');
+
+                if (val >= 60) bgColor = RED;
+                else if (val <= 40) bgColor = lerp(GREEN, AMBER, (val - 20) / 20);
+                else bgColor = lerp(AMBER, RED, (val - 40) / 20);
+            }
+
+            rect(x, y, tileW, tileH, bgColor, undefined, 1);
+
+            // Labels
+            const fullLabel = z.name.replace(/zone/i, '').trim() || z.name;
+            const label = fullLabel.length > 20 ? fullLabel.substring(0, 20) + '...' : fullLabel;
+            T('ZONE', x + 2, y + 5.5, 5, [255, 255, 255], 'bold');
+            T(label, x + 2, y + 10, 8, [255, 255, 255], 'bold');
+
+            T('Bottleneck Intensity Index', x + tileW - 2, y + 5.5, 5, [255, 255, 255], 'normal');
+            doc.setFontSize(5);
+            const delayText = `${z.avgInternalDelay.toFixed(1)}`;
+            const textW = doc.getTextWidth(delayText);
+            T(delayText, x + tileW - 2 - textW, y + 10, 7, [255, 255, 255], 'bold');
+
+            Y = Math.max(Y, y + tileH + gap);
+        });
+
+        // Heatmap Legend
+        Y += 2;
+        const legendW = 40;
+        const legendH = 3;
+        const legendX = ML + CW - legendW;
+
+        T('Efficient (<20d)', legendX - 22, Y + legendH, 6, [21, 128, 61], 'bold');
+
+        // Simulating gradient with 10 small rects
+        for (let j = 0; j < 10; j++) {
+            const stepW = legendW / 10;
+            const x = legendX + j * stepW;
+            const val = 20 + (j * 4); // 20 to 60
+
+            const lerp = (c1: [number, number, number], c2: [number, number, number], w: number): [number, number, number] => [
+                Math.round(c1[0] + (c2[0] - c1[0]) * w),
+                Math.round(c1[1] + (c2[1] - c1[1]) * w),
+                Math.round(c1[2] + (c2[2] - c1[2]) * w)
+            ];
+            const GREEN = hexToRgb('#15803d');
+            const AMBER = hexToRgb('#d97706');
+            const RED = hexToRgb('#991b1b');
+
+            let color = GREEN;
+            if (val <= 40) color = lerp(GREEN, AMBER, (val - 20) / 20);
+            else color = lerp(AMBER, RED, (val - 40) / 20);
+
+            rect(x, Y, stepW + 0.5, legendH, color);
+        }
+
+        T('Delayed (60d+)', legendX + legendW + 2, Y + legendH, 6, [153, 27, 27], 'bold');
+        Y += 8;
+    };
+
+
     // ─────────────────────────────────────────────────────────────────────────
     // PAGE 1 — COMPACT AUDIT DASHBOARD
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Compact Header Block (32mm) ───────────────────────────────────
-    rect(0, 0, PW, 32, C.ink);
-    rect(0, 0, 1.5, 32, C.accentLight);
+    // ── Minimalist Header Block (32mm) ───────────────────────────────────
+    rect(ML, 5, CW, 25, C.white, C.rule, 1);
 
-    T('JDA FORENSIC AUDIT BRIEFING', ML, 10, 8, C.subtle, 'bold');
+    T('JDA FORENSIC AUDIT BRIEFING', ML + 5, 11, 7, C.muted, 'bold');
     T(
-        data.targetZoneName ? `Project: ${data.projectName} · Zone: ${data.targetZoneName}` : `Project: ${data.projectName}`,
-        ML, 20, 14, C.white, 'bold'
+        data.targetZoneName ? `Project: ${data.projectName} // Zone: ${data.targetZoneName}` : `Project: ${data.projectName}`,
+        ML + 5, 19, 12, C.ink, 'bold'
     );
 
-    const metaStr = `Generated: ${data.date} · Confidential`;
-    doc.setFontSize(7.5);
+    const metaStr = `Generated: ${data.date}`;
+    doc.setFontSize(7);
     const mStrW = doc.getTextWidth(metaStr);
-    T(metaStr, PW - MR - mStrW, 10, 7.5, C.subtle);
-    T('Ref: AUDIT-SLA-INTEL', PW - MR - doc.getTextWidth('Ref: AUDIT-SLA-INTEL'), 20, 7, [90, 100, 120]);
+    T(metaStr, PW - MR - 5 - mStrW, 11, 7, C.subtle);
+    T('Ref: AUDIT-SLA-INTEL', PW - MR - 5 - doc.getTextWidth('Ref: AUDIT-SLA-INTEL'), 19, 7, C.subtle);
 
+    // Start content below header
     Y = 40;
 
-    // ── Key Metrics (Grid Row) ────────────────────────────────────────
-    const kpiH = 22;
-    const kpiX = [ML, ML + 4 * colW + 2, ML + 8 * colW + 4];
-    const statItem = (idx: number, label: string, val: string, color: [number, number, number]) => {
-        const x = kpiX[idx];
-        rect(x, Y, 3.7 * colW, kpiH, C.white, C.rule, 0.5);
-        rect(x, Y, 0.8, kpiH, color); // thin sidebar
-        T(label, x + 3.5, Y + 6, 6.5, C.muted, 'bold');
-        T(val, x + 3.5, Y + 15, 16, C.ink, 'bold');
-    };
-
-    statItem(0, 'TOTAL TICKETS', data.overallStats.totalTickets.toString(), C.accent);
-    statItem(1, 'PROCESSING AVG', `${data.overallStats.avgProcessingTime.toFixed(1)}d`, C.high);
-    statItem(2, 'COMPLIANCE', `${data.overallStats.completionRate.toFixed(1)}%`, C.low);
-
-    Y += kpiH + 10;
-
-    // ── Outlier Analytics ─────────────────────────────────────────────
+    // ── Executive Summary & Outlier Analytics ─────────────────────────────
     if (data.outlierReport) {
         const rpt = data.outlierReport;
-        sectionHeader('Forensic Risk Intelligence');
 
-        // Distribution Bar
-        const total = rpt.ticketReports.length || 1;
-        const analytical = rpt.ticketReports.filter(t => t.primaryCategory === 'Analytical Outlier').length;
-        const pctA = (analytical / total);
-        const barH = 6;
+        // Executive summary block
+        if (rpt.executiveSummary && rpt.executiveSummary.trim()) {
+            sectionHeader('Executive Summary');
+            paragraph(rpt.executiveSummary, 8, C.inkSoft, CW);
+            Y += 4;
+        }
 
-        T('IMPACT DISTRIBUTION', ML, Y, 7, C.muted, 'bold');
-        Y += 3;
-        rect(ML, Y, CW, barH, C.critical, undefined, 0.5);
-        if (pctA > 0) rect(ML, Y, CW * pctA, barH, C.accent, undefined, 0.5);
+        sectionHeader('Zone Risk Summary');
 
-        Y += barH + 4;
-        T(`${Math.round(pctA * 100)}% Analytical Gaps`, ML, Y, 7.5, C.accent, 'bold');
-        const bLabel = `${Math.round((1 - pctA) * 100)}% Behavioral Risks`;
-        T(bLabel, PW - MR - doc.getTextWidth(bLabel), Y, 7.5, C.critical, 'bold');
+        const tickets = rpt.ticketReports || [];
+        const analyticalCount = tickets.filter(t => t.primaryCategory === 'Analytical Outlier').length;
+        const behavioralCount = tickets.filter(t => t.primaryCategory === 'Behavioral Outlier').length;
+        const outlierTotal = analyticalCount + behavioralCount;
+        const pctA = outlierTotal ? analyticalCount / outlierTotal : 0;
+        const pctB = outlierTotal ? behavioralCount / outlierTotal : 0;
 
-        Y += 8;
+        T('OUTLIER RISK DISTRIBUTION (ONLY OUTLIERS)', ML, Y, 7, C.muted, 'bold');
+        Y += 6;
 
-        // Severity summary boxes (Row 2)
-        const sevH = 18;
-        const sevStat = (idx: number, label: string, count: number, meta: any) => {
-            const x = kpiX[idx];
-            rect(x, Y, 3.7 * colW, sevH, meta.bg, meta.fg, 0.5);
-            T(label, x + 3.5, Y + 5.5, 6.5, meta.fg, 'bold');
-            T(count.toString(), x + 3.5, Y + 14, 12, meta.fg, 'bold');
-        };
+        T(`${Math.round(pctA * 100)}% Analytical`, ML + 5, Y, 8, C.ink, 'bold');
+        T(`${Math.round(pctB * 100)}% Behavioral`, ML + 45, Y, 8, C.critical, 'bold');
 
-        sevStat(0, 'CRITICAL ALARMS', rpt.ticketReports.filter(t => t.severity === 'CRITICAL').length, severityMeta('CRITICAL'));
-        sevStat(1, 'HIGH PRIORITY', rpt.ticketReports.filter(t => t.severity === 'HIGH').length, severityMeta('HIGH'));
-        sevStat(2, 'MODERATE RISK', rpt.ticketReports.filter(t => t.severity === 'MEDIUM').length, severityMeta('MEDIUM'));
+        Y += 10;
 
-        Y += sevH + 10;
+        // Classification bar chart instead of severity
+        T('OUTLIER CLASSIFICATION PROFILE', ML, Y, 7, C.muted, 'bold');
+        Y += 4;
+        const chartH = 25;
+        rect(ML, Y, CW, chartH, C.surface, C.rule, 0);
 
-        // Executive Narrative - Tightened
-        T('EXECUTIVE SUMMARY', ML, Y, 7, C.muted, 'bold');
-        Y += 3;
-        const lines = doc.splitTextToSize(rpt.executiveSummary, CW - 10);
-        const cardH = (lines.length * 4.2) + 6;
-        rect(ML, Y, CW, cardH, C.surface, C.rule, 0.5);
-        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.inkSoft);
-        doc.text(lines, ML + 5, Y + 5);
+        const classifications = ['ANALYTICAL OUTLIER', 'BEHAVIORAL OUTLIER'];
+        const classCounts = [analyticalCount, behavioralCount];
+        const maxC = Math.max(...classCounts, 1);
 
-        Y += cardH + 10;
-    }
+        const barW = (CW - 60) / 2;
+        classifications.forEach((cls, i) => {
+            const count = classCounts[i];
+            const h = (count / maxC) * (chartH - 10);
+            const x = ML + 20 + (i * (barW + 20));
+            const y = Y + chartH - 5;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // FORENSIC TICKETS - Deep Dive (Tighter spacing)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (data.outlierReport) {
-        sectionHeader('Forensic Findings Detail');
+            // Draw baseline
+            if (i === 0) {
+                doc.setDrawColor(...C.rule);
+                doc.setLineWidth(0.4);
+                doc.line(ML + 10, y, ML + CW - 10, y);
+                doc.setLineWidth(0.1);
+            }
 
-        const tickets = [...data.outlierReport.ticketReports].sort((a, b) => {
-            const order = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
-            return order[a.severity] - order[b.severity];
+            if (h > 0) {
+                const shade = i === 0 ? C.ink : C.inkSoft;
+                rect(x, y - h, barW, h, shade, undefined, 0);
+            }
+
+            T(cls, x + (barW / 2) - (doc.getTextWidth(cls) / 2), y + 4, 6, C.muted, 'bold');
+            if (h > 0) {
+                T(count.toString(), x + (barW / 2) - (doc.getTextWidth(count.toString()) / 2), y - h - 1.5, 7, C.ink, 'bold');
+            }
         });
 
-        for (const t of tickets) {
-            const isBeh = t.primaryCategory === 'Behavioral Outlier';
-            const catC = isBeh ? C.critical : C.accent;
-            const meta = severityMeta(t.severity);
-            const piecemeal = t.documentCrossCheck?.falsyRequestedAfterSubmission || [];
+        Y += chartH + 10;
 
-            // Measurements
-            const summaryL = doc.splitTextToSize(t.outlierSummary || '', CW - 15);
-            const causeL = doc.splitTextToSize(t.rootCause || '', CW - 15);
-            const evidenceL = (t.keyEvidence || []).slice(0, 3).flatMap(e => doc.splitTextToSize(e, CW - 20));
+        // ── Zone-level summary table (compact, with outlier split) ───────────
+        if (rpt.zoneSummary && rpt.zoneSummary.length > 0) {
+            Y += 5; // Add some space before the table
+            autoTable(doc, {
+                head: [['ZONE', 'TICKETS', 'ANALYTICAL', 'BEHAVIORAL', 'NORMAL', 'TOP RECOMMENDATION']],
+                body: rpt.zoneSummary.map((z: any) => {
+                    const total = z.totalTickets || 0;
+                    const analytical = z.analyticalOutliers || 0;
+                    const behavioral = z.behavioralOutliers || 0;
+                    const normal = z.normalTickets != null ? z.normalTickets : Math.max(total - analytical - behavioral, 0);
 
-            let h = 18; // base header
-            h += (summaryL.length * 4.2) + 6;
-            h += (causeL.length * 4.2) + 6;
-            if (evidenceL.length) h += (evidenceL.length * 4) + 8;
-            if (piecemeal.length) h += 10;
-            h += 10; // action footer
+                    const analyticalPct = z.analyticalOutlierPercent != null
+                        ? z.analyticalOutlierPercent
+                        : (total ? (analytical / total) * 100 : 0);
+                    const behavioralPct = z.behavioralOutlierPercent != null
+                        ? z.behavioralOutlierPercent
+                        : (total ? (behavioral / total) * 100 : 0);
+                    const normalPct = z.normalPercent != null
+                        ? z.normalPercent
+                        : (total ? (normal / total) * 100 : 0);
 
-            guard(h + 8, 'Forensic Findings Detail (Cont.)');
+                    const fmt = (count: number, pct: number) =>
+                        total ? `${count} (${pct.toFixed(0)}%)` : count.toString();
 
-            const startY = Y;
-            rect(ML, Y, CW, h, C.white, C.rule, 0.5);
-            rect(ML, Y, 1, h, catC); // sidebar
+                    return [
+                        z.zone,
+                        total.toString(),
+                        fmt(analytical, analyticalPct),
+                        fmt(behavioral, behavioralPct),
+                        fmt(normal, normalPct),
+                        z.topRecommendation
+                    ];
+                }),
+                startY: Y,
+                theme: 'plain',
+                headStyles: { fillColor: C.ink, textColor: 255, fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+                bodyStyles: { fontSize: 7.5, textColor: C.inkSoft, halign: 'center', cellPadding: 2 },
+                alternateRowStyles: { fillColor: C.surface },
+                columnStyles: {
+                    0: { halign: 'left', fontStyle: 'bold', textColor: C.ink },
+                    5: { halign: 'left', cellWidth: 70 }
+                },
+                margin: { left: ML, right: MR }
+            });
+            Y = (doc as any).lastAutoTable.finalY + 10;
+        }
 
-            // Card Header
-            rect(ML + 1, Y, CW - 1, 9, C.surface, undefined, 0);
-            T(isBeh ? 'BEHAVIORAL MISCONDUCT' : 'PROCESS GAP', ML + 4, Y + 6, 6.5, catC, 'bold');
-            // Severity pill
-            const sW = doc.getTextWidth(meta.label) + 4;
-            rect(PW - MR - sW - 3, Y + 2, sW, 5, meta.fg, undefined, 0.5);
-            T(meta.label, PW - MR - (sW / 2) - 3, Y + 5.5, 6, C.white, 'bold');
+        // ── Forensic Findings Detail (Deep Dive) ─────────────────────────────
+        if (rpt.ticketReports && rpt.ticketReports.length > 0) {
+            Y += 5; // Add some space before the table
 
-            Y += 13;
-            T(`#${t.ticketId}`, ML + 4, Y, 10, C.ink, 'bold');
-            T(`Zone ${t.zone} · ${Math.round(t.confidence * 100)}% Confidence`, ML + 4, Y + 5, 7, C.muted);
+            const tickets = [...rpt.ticketReports];
 
-            Y += 9;
+            autoTable(doc, {
+                head: [['TICKET', 'TYPE', 'FLAG / ACTION']],
+                body: tickets.map(t => {
+                    const root = (t.rootCause || '').trim();
+                    const defaultFlag =
+                        t.primaryCategory === 'Behavioral Outlier'
+                            ? 'Behavioral pattern indicated by forensic summaries.'
+                            : 'Analytical pattern indicated by structural/process issues.';
 
-            // Findings text
-            T('INSIGHT', ML + 4, Y, 6, C.muted, 'bold');
-            Y += 3.5;
-            doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.inkSoft);
-            doc.text(summaryL, ML + 4, Y);
-            Y += (summaryL.length * 4.2) + 4;
+                    let flagAction = `FLAG: ${root || defaultFlag}\n\n`;
+                    const action = (t.recommendations || [])[0] || 'Observe process variations.';
+                    flagAction += `ACTION: ${action}`;
 
-            // Flag Alert
-            if (piecemeal.length) {
-                rect(ML + 4, Y, CW - 8, 8, C.critBg, undefined, 0.5);
-                T('FLAG:', ML + 6, Y + 5.5, 7, C.critical, 'bold');
-                T(`Re-requested: ${piecemeal.join(', ')}`, ML + 15, Y + 5.5, 7, C.inkSoft);
-                Y += 10;
-            }
-
-            // Root Cause
-            T('ROOT CAUSE', ML + 4, Y, 6, C.muted, 'bold');
-            Y += 3.5;
-            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.ink);
-            doc.text(causeL, ML + 4, Y);
-            Y += (causeL.length * 4.2) + 4;
-
-            // Evidence grain
-            if (evidenceL.length) {
-                T('EVIDENCE', ML + 4, Y, 6, C.muted, 'bold');
-                Y += 3.5;
-                doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.muted);
-                evidenceL.forEach((line, i) => {
-                    T('>', ML + 4, Y + (i * 4), 7, C.subtle, 'bold');
-                    doc.text(line, ML + 8, Y + (i * 4));
-                });
-                Y += (evidenceL.length * 4) + 4;
-            }
-
-            // Card Footer (Action)
-            const footerY = startY + h - 8;
-            rect(ML + 1, footerY, CW - 1, 8, C.accentBg, undefined, 0);
-            const action = (t.recommendations || [])[0] || 'Observe process Variations.';
-            T('ACTION:', ML + 4, footerY + 5.5, 6.5, C.accent, 'bold');
-            T(action, ML + 16, footerY + 5.5, 7.5, C.accent);
-
-            Y = startY + h + 6;
+                    return [
+                        `#${t.ticketId}`,
+                        t.primaryCategory === 'Behavioral Outlier' ? 'BEHAVIORAL' : 'ANALYTICAL',
+                        flagAction
+                    ];
+                }),
+                startY: Y,
+                theme: 'plain',
+                headStyles: { fillColor: C.ink, textColor: 255, fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+                bodyStyles: { fontSize: 7.5, textColor: C.inkSoft, halign: 'left', cellPadding: 2, cellWidth: 'wrap' },
+                alternateRowStyles: { fillColor: C.surface },
+                columnStyles: {
+                    0: { halign: 'center', fontStyle: 'bold', textColor: C.ink, cellWidth: 25 },
+                    1: { halign: 'center', cellWidth: 25 },
+                    2: { halign: 'left', cellWidth: 'auto' }
+                },
+                margin: { left: ML, right: MR }
+            });
+            Y = (doc as any).lastAutoTable.finalY + 10;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ANNEX - DATA APPENDIX
-    // ─────────────────────────────────────────────────────────────────────────
-    guard(40, 'Regional Performance Annex');
-    sectionHeader('Regional Performance Annex');
+    // ── Zone Efficiency Heatmap (Only for All Zones) ─────────────────────
+    if (!data.targetZoneName && data.zones && data.zones.length > 0) {
+        if (Y > PH - 60) { doc.addPage(); Y = 20; }
+        drawHeatmap(data.zones);
+    }
 
-    autoTable(doc, {
-        head: [['ZONE AUTHORITY', 'TICKETS', 'AVG TIME', 'INTERNAL', 'COMPLIANCE %']],
-        body: data.zones.map(z => [
-            z.name,
-            z.ticketCount.toString(),
-            `${z.avgTime.toFixed(1)}d`,
-            `${z.avgInternalDelay.toFixed(1)}d`,
-            `${z.onTime.toFixed(1)}%`
-        ]),
-        startY: Y,
-        theme: 'plain',
-        headStyles: { fillColor: C.ink, textColor: 255, fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
-        bodyStyles: { fontSize: 7.5, textColor: C.inkSoft, halign: 'center', cellPadding: 2 },
-        alternateRowStyles: { fillColor: C.surface },
-        columnStyles: { 0: { halign: 'left', fontStyle: 'bold', textColor: C.ink } },
-        margin: { left: ML, right: MR }
-    });
+    // ── Employee Workload & Delay Analysis ─────────────────────────────
+    if (data.employees && data.employees.length > 0) {
+        if (Y > PH - 60) { doc.addPage(); Y = 20; }
+        sectionHeader('Employee Workload & Delay Analysis');
+        T('Sorted by Average Delay to highlight potential bottlenecks.', ML, Y, 7, C.muted, 'italic');
+        Y += 5;
+
+        autoTable(doc, {
+            head: [['EMPLOYEE', 'ROLE', 'TICKETS', 'AVG DELAY']],
+            body: data.employees.map(e => [
+                e.name,
+                e.role,
+                e.ticketCount.toString(),
+                `${e.avgDelay.toFixed(1)}d`
+            ]),
+            startY: Y,
+            theme: 'plain',
+            headStyles: { fillColor: C.ink, textColor: 255, fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+            bodyStyles: { fontSize: 7.5, textColor: C.inkSoft, halign: 'center', cellPadding: 2 },
+            didParseCell: (data) => {
+                // If column is 'AVG DELAY' (index 3) and value > 10, highlight red
+                if (data.column.index === 3 && data.section === 'body') {
+                    const rawValue = data.cell.raw as string;
+                    const delay = parseFloat(rawValue.replace('d', ''));
+                    if (delay > 10) {
+                        data.cell.styles.textColor = [185, 28, 28]; // #b91c1c
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            },
+            alternateRowStyles: { fillColor: C.surface },
+            columnStyles: {
+                0: { halign: 'left', fontStyle: 'bold', textColor: C.ink },
+                1: { halign: 'left' }
+            },
+            margin: { left: ML, right: MR }
+        });
+        Y = (doc as any).lastAutoTable.finalY + 10;
+    }
 
     // ── Compact Footer ─────────────────────────────────────────────
     const totalPages = (doc.internal as any).getNumberOfPages();

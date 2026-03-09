@@ -2,8 +2,24 @@ import { Box, Typography, TextField, Stack, Breadcrumbs, Link } from '@mui/mater
 import { ChevronRight, Search } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    activePage?: string;
+}
+
+const PAGE_LABEL_MAP: Record<string, string> = {
+    'Data Distribution': 'Data Distribution',
+    'Text Analytics': 'Remarks Analysis',
+    'Error Analysis': 'Zonewise Analysis',
+    'Playground': 'Playground',
+    'Applications': 'Applications Overview',
+    'Anomalies': 'Anomaly Detection',
+    'Employee Analytics': 'Employee Analytics',
+    'JDA Intelligence': 'Detail Intelligence'
+};
+
+const Header: React.FC<HeaderProps> = ({ activePage = 'Analytics Dashboard' }) => {
     const { filters, setFilters } = useProject();
+    const pageTitle = PAGE_LABEL_MAP[activePage] || activePage;
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setFilters(prev => ({ ...prev, search: event.target.value }));
@@ -29,10 +45,10 @@ const Header: React.FC = () => {
                         <Link underline="hover" color="inherit" href="/" sx={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
                             Admin
                         </Link>
-                        <Typography color="text.primary" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>Analytics Dashboard</Typography>
+                        <Typography color="text.primary" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{pageTitle}</Typography>
                     </Breadcrumbs>
                     <Typography variant="h5" fontWeight="700" color="#0f172a" sx={{ fontFamily: 'Outfit !important', mt: 0.5 }}>
-                        SLA & Process Intelligence
+                        {pageTitle}
                     </Typography>
                 </Box>
 

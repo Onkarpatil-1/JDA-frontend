@@ -4,7 +4,7 @@ import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typogr
 import {
     Settings, ShieldCheck, ArrowLeft, ChevronLeft, ChevronRight,
     Microscope,
-    LayoutDashboard, MessageSquareText, Play, Zap // Updated Icons
+    LayoutDashboard, MessageSquareText, Play, Zap, Database // Added Database icon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,17 +46,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
         <Box sx={{
             width: isCollapsed ? 80 : 260,
             height: '100vh',
-            bgcolor: '#0f172a',
-            color: '#94a3b8',
+            bgcolor: '#ffffff',
+            color: '#475569',
             display: 'flex',
             flexDirection: 'column',
             position: 'fixed',
             left: 0,
             top: 0,
             zIndex: 1100,
-            borderRight: '1px solid rgba(255,255,255,0.05)',
+            borderRight: '1px solid rgba(0,0,0,0.08)',
             transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.04)',
+            fontFamily: '"Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            fontSize: '0.875rem'
         }}>
             {/* Brand & Toggle */}
             <Box sx={{
@@ -82,10 +85,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                         }}>
                             <ShieldCheck size={22} />
                         </Box>
-                        <Typography variant="h6" fontWeight="700" color="white" sx={{
-                            fontFamily: 'Outfit !important',
-                            letterSpacing: '-0.5px'
-                        }}>
+                        <Typography
+                            variant="h6"
+                            fontWeight="700"
+                            color="#0f172a"
+                            sx={{
+                                fontFamily: 'Outfit, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                                letterSpacing: '-0.04em',
+                                fontSize: '1.1rem'
+                            }}
+                        >
                             JDA Pulse AI
                         </Typography>
                     </Box>
@@ -95,13 +104,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                     <IconButton
                         onClick={handleToggle}
                         sx={{
-                            color: '#94a3b8',
-                            bgcolor: 'rgba(255, 255, 255, 0.05)',
+                            color: '#64748b',
+                            bgcolor: 'rgba(0, 0, 0, 0.04)',
                             width: 32,
                             height: 32,
                             transition: 'all 0.2s ease',
                             '&:hover': {
-                                bgcolor: 'rgba(102, 126, 234, 0.2)',
+                                bgcolor: 'rgba(102, 126, 234, 0.12)',
                                 color: '#667eea',
                                 transform: 'scale(1.1)'
                             }
@@ -132,15 +141,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
             {/* Menu */}
             <Box sx={{ px: isCollapsed ? 1 : 2, flexGrow: 1, transition: 'padding 0.3s ease' }}>
                 {!isCollapsed && (
-                    <Typography variant="caption" fontWeight="bold" sx={{
-                        px: 2,
-                        mb: 1,
-                        display: 'block',
-                        textTransform: 'uppercase',
-                        letterSpacing: 1,
-                        opacity: 0.5,
-                        fontSize: '0.7rem'
-                    }}>
+                    <Typography
+                        variant="caption"
+                        fontWeight="bold"
+                        sx={{
+                            px: 2,
+                            mb: 1,
+                            display: 'block',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.16em',
+                            color: '#94a3b8',
+                            fontSize: '0.68rem'
+                        }}
+                    >
                         Main Menu
                     </Typography>
                 )}
@@ -155,16 +168,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                         sx={{
                                             borderRadius: 2,
                                             background: isActive
-                                                ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                                                ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%)'
                                                 : 'transparent',
-                                            color: isActive ? '#667eea' : 'inherit',
+                                            color: isActive ? '#667eea' : '#475569',
                                             justifyContent: isCollapsed ? 'center' : 'flex-start',
                                             px: isCollapsed ? 1.5 : 2,
                                             py: 1.5,
                                             transition: 'all 0.2s ease',
                                             position: 'relative',
                                             '&:hover': {
-                                                bgcolor: 'rgba(102, 126, 234, 0.1)',
+                                                bgcolor: 'rgba(102, 126, 234, 0.08)',
+                                                color: '#667eea',
                                                 transform: 'translateX(4px)'
                                             },
                                             '&::before': isActive ? {
@@ -190,8 +204,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                             <ListItemText
                                                 primary={item.text}
                                                 primaryTypographyProps={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: isActive ? 600 : 500
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: isActive ? 600 : 500,
+                                                    letterSpacing: '0.01em'
                                                 }}
                                             />
                                         )}
@@ -205,21 +220,85 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
 
             {/* Current Project Info */}
             {currentProject && !isCollapsed && (
-                <Box sx={{ px: 3, mb: 3 }}>
+                <Box sx={{ px: 2.5, mb: 3 }}>
                     <Box sx={{
                         p: 2,
                         background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(102, 126, 234, 0.3)',
-                        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.1)'
+                        borderRadius: 3,
+                        border: '1px solid rgba(102, 126, 234, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: -10,
+                            right: -10,
+                            width: 60,
+                            height: 60,
+                            background: 'rgba(102, 126, 234, 0.05)',
+                            borderRadius: '50%',
+                        }
                     }}>
-                        <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>
-                            Current Project
-                        </Typography>
-                        <Typography fontWeight="600" color="#667eea" sx={{ mb: 1, fontSize: '0.7rem' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                            <Box sx={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: 1,
+                                bgcolor: 'rgba(102, 126, 234, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#667eea'
+                            }}>
+                                <Database size={14} />
+                            </Box>
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    color: '#64748b',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    fontSize: '0.65rem'
+                                }}
+                            >
+                                Current Project
+                            </Typography>
+                        </Box>
+
+                        <Typography
+                            sx={{
+                                color: '#0f172a',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                mb: 1.5,
+                                fontFamily: 'Outfit',
+                                lineHeight: 1.4
+                            }}
+                        >
                             {currentProject.metadata.name}
                         </Typography>
 
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                bgcolor: '#10b981',
+                                boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                                animation: 'pulse 2s infinite'
+                            }} />
+                            <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 700, fontSize: '0.7rem' }}>
+                                LIVE
+                            </Typography>
+                            <style>{`
+                                @keyframes pulse {
+                                    0% { opacity: 1; transform: scale(1); }
+                                    50% { opacity: 0.5; transform: scale(1.2); }
+                                    100% { opacity: 1; transform: scale(1); }
+                                }
+                            `}</style>
+                        </Box>
                     </Box>
                 </Box>
             )}
@@ -227,7 +306,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
             {/* Footer Tools */}
             <Box sx={{
                 p: isCollapsed ? 1 : 2,
-                borderTop: '1px solid rgba(255,255,255,0.05)',
+                borderTop: '1px solid rgba(0,0,0,0.08)',
                 transition: 'padding 0.3s ease'
             }}>
                 <List disablePadding>
@@ -242,7 +321,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                         px: isCollapsed ? 1.5 : 2,
                                         transition: 'all 0.2s ease',
                                         '&:hover': {
-                                            bgcolor: 'rgba(102, 126, 234, 0.1)',
+                                            bgcolor: 'rgba(102, 126, 234, 0.08)',
                                             transform: 'translateX(4px)'
                                         }
                                     }}
@@ -273,7 +352,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                                 px: isCollapsed ? 1.5 : 2,
                                 transition: 'all 0.2s ease',
                                 '&:hover': {
-                                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                    bgcolor: 'rgba(0, 0, 0, 0.04)',
                                     transform: 'translateX(4px)'
                                 }
                             }}>
@@ -305,12 +384,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                             {!isCollapsed ? (
                                 <FormControl fullWidth size="small" variant="outlined" sx={{
                                     '.MuiOutlinedInput-root': {
-                                        color: '#94a3b8',
-                                        '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                                        '&:hover fieldset': { borderColor: 'rgba(102, 126, 234, 0.5)' },
-                                        '&.Mui-focused fieldset': { borderColor: '#667eea' },
+                                        color: '#475569',
+                                        backgroundColor: '#f8fafc',
+                                        '& fieldset': { borderColor: 'rgba(0,0,0,0.12)' },
+                                        '&:hover fieldset': { borderColor: 'rgba(102, 126, 234, 0.4)' },
+                                        '&.Mui-focused fieldset': { borderColor: '#667eea', borderWidth: '1px' },
                                     },
-                                    '.MuiSelect-icon': { color: '#94a3b8' },
+                                    '.MuiSelect-icon': { color: '#64748b' },
                                     '.MuiInputLabel-root': { color: '#64748b' },
                                     '.MuiInputLabel-root.Mui-focused': { color: '#667eea' }
                                 }}>
@@ -359,7 +439,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onCollapse, c
                             ) : (
                                 <Tooltip title={`AI Provider: ${selectedProvider} `} placement="right">
                                     <Box sx={{
-                                        color: '#94a3b8',
+                                        color: '#64748b',
                                         display: 'flex',
                                         justifyContent: 'center',
                                         cursor: 'pointer',

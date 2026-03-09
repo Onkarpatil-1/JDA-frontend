@@ -159,7 +159,7 @@ function DashboardContent() {
             transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
-          <Header />
+          <Header activePage={activePage} />
           <Container maxWidth="xl" sx={{ mt: 3, mb: 4, px: { xs: 2, md: 3 } }}>
             {renderContent()}
           </Container>

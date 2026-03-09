@@ -16,7 +16,11 @@ import {
     Pagination,
     alpha,
     Menu,
-    MenuItem
+    MenuItem,
+    Popover,
+    TextField,
+    Stack,
+    Divider
 } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,7 +30,9 @@ import {
     AlertTriangle,
     TrendingUp,
     Users,
-    ChevronDown
+    ChevronDown,
+    Tag,
+    Calendar
 } from 'lucide-react';
 import {
     PieChart,
@@ -38,6 +44,7 @@ import {
 import { useProject } from '../context/ProjectContext';
 import { generateZoneReportPDF } from '../utils/pdfExport';
 import API_BASE from '../lib/api';
+import { parseDateString } from '../utils/dateUtils';
 
 const CATEGORY_COLORS: Record<string, string> = {
     'Documentation & Compliance Issues': '#4f46e5',
@@ -71,6 +78,7 @@ interface ZoneSummary {
     internalDelay: number;
     avgInternalDelay: number;
     documentationDelayRate: number;
+    weightedScore: number;
 }
 
 interface EmployeeRowData {
@@ -82,50 +90,6 @@ interface EmployeeRowData {
     documentationShare: number;
 }
 
-const KPICard = ({ title, value, subtext, accent, icon }: { title: string; value: string; subtext?: string; accent: string; icon: React.ReactNode }) => (
-    <Paper
-        elevation={0}
-        sx={{
-            p: 3,
-            borderRadius: 2,
-            border: '1px solid #e5e7eb',
-            bgcolor: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2.5,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}
-    >
-        <Box
-            sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                bgcolor: alpha(accent, 0.08),
-                color: accent,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }}
-        >
-            {icon}
-        </Box>
-        <Box sx={{ flex: 1 }}>
-            <Typography variant="overline" sx={{ color: '#6b7280', fontWeight: 600, letterSpacing: '0.08em', display: 'block', lineHeight: 1.2, mb: 0.5 }}>
-                {title}
-            </Typography>
-            <Typography variant="h5" sx={{ color: '#111827', fontWeight: 700, fontFamily: 'Outfit' }}>
-                {value}
-            </Typography>
-            {subtext && (
-                <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, mt: 0.5, display: 'block' }}>
-                    {subtext}
-                </Typography>
-            )}
-        </Box>
-    </Paper>
-);
-
 const ZoneTile = ({
     zone,
     isActive,
@@ -135,81 +99,253 @@ const ZoneTile = ({
     isActive: boolean;
     onClick: () => void;
 }) => {
-    const getColor = (avgTime: number) => {
-        if (avgTime <= 3) return '#16a34a'; // Dark green
-        if (avgTime <= 7) return '#d97706'; // Amber
-        return '#dc2626'; // Dark red
+    // Actual JS implementation for interpolation
+    const lerpColor = (c1: string, c2: string, weight: number) => {
+        const hex = (x: string) => x.replace('#', '');
+        const r1 = parseInt(hex(c1).substring(0, 2), 16);
+        const g1 = parseInt(hex(c1).substring(2, 4), 16);
+        const b1 = parseInt(hex(c1).substring(4, 6), 16);
+        const r2 = parseInt(hex(c2).substring(0, 2), 16);
+        const g2 = parseInt(hex(c2).substring(2, 4), 16);
+        const b2 = parseInt(hex(c2).substring(4, 6), 16);
+        const r = Math.round(r1 + (r2 - r1) * weight);
+        const g = Math.round(g1 + (g2 - g1) * weight);
+        const b = Math.round(b1 + (b2 - b1) * weight);
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     };
 
-    const bg = getColor(zone.avgTime);
-    const zoneLabel = zone.name.replace(/zone/i, '').trim() || zone.name;
+    const getDynamicColor = (val: number) => {
+        // Match legend: Efficient (< 20d), Delayed (60d+)
+        if (val <= 20) return '#15803d'; // Success Green (up to 20 days)
+        if (val >= 60) return '#991b1b'; // Danger Red (60+ days)
+        if (val <= 40) return lerpColor('#15803d', '#d97706', (val - 20) / 20); // 20 -> 40
+        return lerpColor('#d97706', '#991b1b', (val - 40) / 20); // 40 -> 60
+    };
+
+    // Color intensity based on Performance Score
+    const bg = getDynamicColor(zone.weightedScore);
+
+    const fullLabel = zone.name.replace(/zone/i, '').trim() || zone.name;
+    const zoneLabel = fullLabel.length > 20 ? fullLabel.substring(0, 20) + '...' : fullLabel;
 
     return (
         <Paper
             elevation={0}
             onClick={onClick}
             sx={{
-                p: 2.5,
-                borderRadius: 2,
+                p: 1.5,
+                borderRadius: 1.5,
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: isActive ? bg : '#e5e7eb',
-                borderLeft: `4px solid ${bg}`,
-                bgcolor: 'white',
+                borderColor: isActive ? '#0f172a' : 'transparent',
+                bgcolor: bg,
+                color: 'white',
                 transform: isActive ? 'scale(1.02)' : 'scale(1)',
-                boxShadow: isActive ? '0 10px 15px -3px rgba(0,0,0,0.05)' : '0 1px 2px rgba(0,0,0,0.02)',
+                boxShadow: isActive ? '0 10px 15px -3px rgba(0,0,0,0.1)' : '0 1px 2px rgba(0,0,0,0.05)',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minHeight: 85,
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
-                    borderColor: isActive ? bg : '#d1d5db',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                    transform: 'translateY(-2px) scale(1.01)',
+                    boxShadow: '0 12px 20px -5px rgba(0,0,0,0.1)',
+                    '& .hover-overlay': { opacity: 1 }
                 }
             }}
         >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+            <Box
+                className="hover-overlay"
+                sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                    pointerEvents: 'none'
+                }}
+            />
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, position: 'relative', zIndex: 1 }}>
                 <Box>
-                    <Typography variant="overline" sx={{ color: '#6b7280', fontWeight: 600, letterSpacing: '0.1em', lineHeight: 1 }}>
+                    <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, letterSpacing: '0.1em', fontSize: '0.65rem' }}>
                         ZONE
                     </Typography>
                     <Typography
                         variant="h6"
-                        sx={{ fontWeight: 700, color: '#111827', mt: 0.5, fontFamily: 'Outfit' }}
+                        sx={{ fontWeight: 800, color: 'white', mt: -0.5, fontFamily: 'Outfit', fontSize: '1.25rem' }}
                     >
                         {zoneLabel}
                     </Typography>
                 </Box>
-                <Chip
-                    size="small"
-                    variant="outlined"
-                    label={`${zone.ticketCount} tickets`}
-                    sx={{
-                        height: 24,
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        borderColor: '#e5e7eb',
-                        color: '#4b5563',
-                        bgcolor: '#f9fafb'
-                    }}
-                />
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <Box>
-                    <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, display: 'block', mb: 0.25 }}>
-                        Avg Delay
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#111827' }}>
-                        {zone.avgTotalDelay.toFixed(0)} <Typography component="span" variant="caption" sx={{ color: '#6b7280' }}>days</Typography>
+                <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', px: 1, py: 0.5, borderRadius: 1 }}>
+                    <Typography variant="caption" sx={{ color: 'white', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        {zone.ticketCount} tkt
                     </Typography>
                 </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500, display: 'block', mb: 0.25 }}>
-                        Avg Internal Delay
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: 'auto', position: 'relative', zIndex: 1 }}>
+                <Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, display: 'block', mb: 0 }}>
+                        Avg Delay
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#111827' }}>
-                        {zone.avgInternalDelay.toFixed(0)} <Typography component="span" variant="caption" sx={{ color: '#6b7280' }}>days</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'white', lineHeight: 1 }}>
+                        {zone.avgTotalDelay.toFixed(0)} <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>days</Typography>
+                    </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right', opacity: 0.9 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, display: 'block' }}>
+                        Bottleneck Intensity Index
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'white' }}>
+                        {zone.weightedScore.toFixed(1)}
                     </Typography>
                 </Box>
             </Box>
         </Paper>
+    );
+};
+
+const DateRangePicker = ({ onRangeChange }: { onRangeChange: (start: Date | null, end: Date | null) => void }) => {
+    const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+    const [label, setLabel] = useState('Last 30 Days');
+
+    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handlePreset = (preset: string) => {
+        setLabel(preset);
+        handleClose();
+        // Logical implementation would go here
+    };
+
+    const open = Boolean(anchorEl);
+
+    return (
+        <Box>
+            <Button
+                onClick={handleClick}
+                startIcon={<Calendar size={18} />}
+                endIcon={<ChevronDown size={16} />}
+                sx={{
+                    bgcolor: 'white',
+                    color: '#111827',
+                    fontWeight: 600,
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                    px: 3,
+                    py: 1,
+                    borderRadius: '999px',
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    '&:hover': {
+                        bgcolor: '#f8fafc',
+                        borderColor: '#cbd5e1',
+                    }
+                }}
+            >
+                {label}
+            </Button>
+            <Popover
+                open={open}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                }}
+                PaperProps={{
+                    sx: {
+                        mt: 1,
+                        p: 2,
+                        width: 320,
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 12px 24px -4px rgba(0,0,0,0.1)',
+                    }
+                }}
+            >
+                <Typography variant="overline" sx={{ color: '#64748b', fontWeight: 800, mb: 1, display: 'block' }}>
+                    Quick Select
+                </Typography>
+                <Stack spacing={0.5}>
+                    {['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'Fiscal Year'].map((preset) => (
+                        <MenuItem
+                            key={preset}
+                            onClick={() => handlePreset(preset)}
+                            sx={{
+                                borderRadius: 1.5,
+                                fontSize: '0.875rem',
+                                fontWeight: label === preset ? 700 : 500,
+                                color: label === preset ? '#3b82f6' : '#334155',
+                                bgcolor: label === preset ? alpha('#3b82f6', 0.05) : 'transparent',
+                            }}
+                        >
+                            {preset}
+                        </MenuItem>
+                    ))}
+                </Stack>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="overline" sx={{ color: '#64748b', fontWeight: 800, mb: 1, display: 'block' }}>
+                    Custom Range
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <TextField
+                        type="date"
+                        size="small"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem' } }}
+                    />
+                    <Typography sx={{ color: '#94a3b8' }}>→</Typography>
+                    <TextField
+                        type="date"
+                        size="small"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem' } }}
+                    />
+                </Stack>
+                <Button
+                    fullWidth
+                    variant="contained"
+                    size="small"
+                    disabled={!startDate || !endDate}
+                    onClick={() => {
+                        onRangeChange(new Date(startDate), new Date(endDate));
+                        setLabel(`${startDate} - ${endDate}`);
+                        handleClose();
+                    }}
+                    sx={{
+                        mt: 2,
+                        bgcolor: '#0f172a',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        '&:hover': { bgcolor: '#1e293b' }
+                    }}
+                >
+                    Apply Range
+                </Button>
+            </Popover>
+        </Box>
     );
 };
 
@@ -219,7 +355,6 @@ const ErrorAnalysisPage = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
     const pageSize = 6;
-
     const {
         zones,
         selectedZoneName,
@@ -228,7 +363,8 @@ const ErrorAnalysisPage = () => {
         selectedZoneCategories,
         globalCategoryDistribution,
         alertZone,
-        bestZone
+        bestZone,
+        employeesByZone
     } = useZoneAnalytics();
 
     if (!currentProject) {
@@ -266,7 +402,7 @@ const ErrorAnalysisPage = () => {
                 const res = await fetch(`${API_BASE}/project/${currentProject.metadata.id}/zone-outlier-report`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ aiProvider: 'ollama' })
+                    body: JSON.stringify({ aiProvider: 'ollama', zoneName })
                 });
                 if (res.ok) {
                     const json = await res.json();
@@ -278,15 +414,43 @@ const ErrorAnalysisPage = () => {
                 console.warn('Could not reach backend for outlier report, generating PDF with stats only.', fetchErr);
             }
 
+            const isAll = zoneName === 'ALL';
+            const targetZone = isAll ? null : zones.find(z => z.name === zoneName);
+
+            // 1.5 Prepare employee data for the selected context
+            let employeesToExport: EmployeeRowData[] = [];
+            if (isAll) {
+                // Aggregate all employees from all zones, filter unique, and sort
+                const allEmpMap = new Map<string, EmployeeRowData>();
+                Object.values(employeesByZone).forEach((empList: EmployeeRowData[]) => {
+                    empList.forEach((e: EmployeeRowData) => {
+                        if (!allEmpMap.has(e.name)) {
+                            allEmpMap.set(e.name, { ...e });
+                        } else {
+                            const existing = allEmpMap.get(e.name)!;
+                            // Simple aggregation for multi-zone employees
+                            existing.ticketCount += e.ticketCount;
+                            existing.avgDelay = (existing.avgDelay + e.avgDelay) / 2; // Rough average
+                            existing.documentationIssues += e.documentationIssues;
+                            existing.documentationShare = existing.ticketCount > 0 ? existing.documentationIssues / existing.ticketCount : 0;
+                        }
+                    });
+                });
+                employeesToExport = Array.from(allEmpMap.values())
+                    .sort((a, b) => b.avgDelay - a.avgDelay || b.ticketCount - a.ticketCount);
+            } else if (zoneName && employeesByZone[zoneName]) {
+                employeesToExport = employeesByZone[zoneName];
+            }
+
             // 2. Generate PDF with outlier data (or without if fetch failed)
             generateZoneReportPDF({
                 projectName: currentProject.metadata.name,
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-                targetZoneName: zoneName,
+                targetZoneName: isAll ? undefined : zoneName,
                 overallStats: {
-                    totalTickets: currentProject.statistics.totalTickets,
-                    avgProcessingTime: currentProject.metadata.avgProcessingTime,
-                    completionRate: currentProject.statistics.completionRate
+                    totalTickets: isAll ? currentProject.statistics.totalTickets : (targetZone ? targetZone.ticketCount : 0),
+                    avgProcessingTime: isAll ? currentProject.metadata.avgProcessingTime : (targetZone ? targetZone.avgTotalDelay : 0),
+                    completionRate: isAll ? currentProject.statistics.completionRate : (targetZone ? targetZone.onTime : 0)
                 },
                 alertZone: alertZone ? {
                     name: alertZone.name,
@@ -299,8 +463,9 @@ const ErrorAnalysisPage = () => {
                     onTimeRate: bestZone.onTime
                 } : undefined,
                 aiInsights: currentProject.statistics.aiInsights,
-                zones: zones.filter(z => z.name === zoneName),
-                outlierReport
+                zones: isAll ? zones : zones.filter(z => z.name === zoneName),
+                outlierReport,
+                employees: employeesToExport
             });
         } catch (error) {
             console.error('Failed to generate PDF:', error);
@@ -314,120 +479,228 @@ const ErrorAnalysisPage = () => {
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
                 <Box>
-                    <Typography
-                        variant="h4"
-                        sx={{
-                            fontFamily: 'Outfit',
-                            fontWeight: 800,
-                            color: '#0f172a',
-                            mb: 1
-                        }}
-                    >
-                        Zone Performance Heatmap
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 660 }}>
-                        Visual overview of processing efficiency across all administrative zones, with drill-down into{' '}
-                        <strong>Documentation &amp; Compliance Issues</strong> for each zone and employee.
-                    </Typography>
+
+
                 </Box>
-                <Box>
-                    <Button
-                        variant="contained"
-                        startIcon={<Download size={18} />}
-                        endIcon={<ChevronDown size={16} />}
-                        onClick={handleExportClick}
-                        disabled={isExporting}
-                        sx={{
-                            bgcolor: 'white',
-                            color: '#111827',
-                            fontWeight: 600,
-                            border: '1px solid #e5e7eb',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                            px: 3,
-                            py: 1,
-                            borderRadius: 2,
-                            '&:hover': {
-                                bgcolor: '#f8fafc',
-                                borderColor: '#cbd5e1',
-                                boxShadow: 'none'
-                            }
-                        }}
-                    >
-                        {isExporting ? 'Generating...' : 'Download Zone Report'}
-                    </Button>
-                    <Menu
-                        anchorEl={exportAnchorEl}
-                        open={Boolean(exportAnchorEl)}
-                        onClose={handleExportClose}
-                        sx={{ mt: 1 }}
-                        PaperProps={{
-                            elevation: 0,
-                            sx: {
-                                overflow: 'visible',
-                                filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <DateRangePicker onRangeChange={(s, e) => console.log(s, e)} />
+                    <Box>
+                        <Button
+                            variant="contained"
+                            startIcon={<Download size={18} />}
+                            endIcon={<ChevronDown size={16} />}
+                            onClick={handleExportClick}
+                            disabled={isExporting}
+                            sx={{
+                                bgcolor: 'white',
+                                color: '#111827',
+                                fontWeight: 600,
                                 border: '1px solid #e5e7eb',
-                                minWidth: 240,
-                                maxHeight: 360,
-                                borderRadius: 2
-                            }
-                        }}
-                    >
-                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9', mb: 1, bgcolor: '#f8fafc' }}>
-                            <Typography variant="overline" sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', lineHeight: 1 }}>
-                                SELECT A ZONE TO EXPORT
-                            </Typography>
-                        </Box>
-                        {zones.map(z => (
-                            <MenuItem
-                                key={z.name}
-                                onClick={() => handleDownloadReport(z.name)}
-                                sx={{
-                                    fontSize: '0.875rem',
-                                    py: 1.5,
-                                    px: 2,
-                                    fontWeight: 500,
-                                    color: '#334155',
-                                    borderBottom: '1px solid #f8fafc',
-                                    '&:hover': { bgcolor: '#f1f5f9' }
-                                }}
-                            >
-                                {z.name}
-                            </MenuItem>
-                        ))}
-                    </Menu>
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                px: 3,
+                                py: 1,
+                                borderRadius: 2,
+                                '&:hover': {
+                                    bgcolor: '#f8fafc',
+                                    borderColor: '#cbd5e1',
+                                    boxShadow: 'none'
+                                }
+                            }}
+                        >
+                            {isExporting ? 'Generating...' : 'Download Zone Report'}
+                        </Button>
+                        <Menu
+                            anchorEl={exportAnchorEl}
+                            open={Boolean(exportAnchorEl)}
+                            onClose={handleExportClose}
+                            sx={{ mt: 1 }}
+                            PaperProps={{
+                                elevation: 0,
+                                sx: {
+                                    overflow: 'hidden',
+                                    filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
+                                    border: '1px solid #e5e7eb',
+                                    minWidth: 260,
+                                    maxHeight: 360,
+                                    borderRadius: 2,
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }
+                            }}
+                        >
+                            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9', bgcolor: '#f8fafc' }}>
+                                <Typography variant="overline" sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', lineHeight: 1 }}>
+                                    SELECT A ZONE TO EXPORT
+                                </Typography>
+                            </Box>
+                            <Box sx={{ py: 0.5, maxHeight: 6 * 44, overflowY: 'auto' }}>
+                                <MenuItem
+                                    onClick={() => handleDownloadReport('ALL')}
+                                    sx={{
+                                        fontSize: '0.875rem',
+                                        py: 1.2,
+                                        px: 2,
+                                        fontWeight: 700,
+                                        color: '#0f172a',
+                                        borderBottom: '2px solid #f1f5f9',
+                                        bgcolor: alpha('#3b82f6', 0.04),
+                                        '&:hover': { bgcolor: alpha('#3b82f6', 0.1) }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Tag size={14} />
+                                        All Zones Overview
+                                    </Box>
+                                </MenuItem>
+                                {zones.map(z => (
+                                    <MenuItem
+                                        key={z.name}
+                                        onClick={() => handleDownloadReport(z.name)}
+                                        sx={{
+                                            fontSize: '0.875rem',
+                                            py: 1.2,
+                                            px: 2,
+                                            fontWeight: 500,
+                                            color: '#334155',
+                                            borderBottom: '1px solid #f8fafc',
+                                            '&:hover': { bgcolor: '#f1f5f9' }
+                                        }}
+                                    >
+                                        {z.name}
+                                    </MenuItem>
+                                ))}
+                            </Box>
+                        </Menu>
+                    </Box>
                 </Box>
             </Box>
 
-            {/* Alert + Top Zone */}
+            {/* Efficiency Alert + Top Zone Insight Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <KPICard
-                        title="Efficiency Alert"
-                        value={alertZone ? `${alertZone.name} (Avg ${alertZone.avgTime.toFixed(0)} days)` : 'No critical zone'}
-                        subtext={
-                            alertZone
-                                ? `${(alertZone.documentationDelayRate * 100).toFixed(0)}% of its delay is due to Documentation & Compliance`
-                                : 'No documentation-heavy delays detected'
-                        }
-                        accent="#dc2626"
-                        icon={<AlertTriangle size={20} />}
-                    />
+                    {alertZone && (
+                        <Paper
+                            elevation={0}
+                            onClick={() => {
+                                setSelectedZoneName(alertZone.name);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 2,
+                                border: '1px solid #fecaca',
+                                borderLeft: '4px solid #dc2626',
+                                bgcolor: 'white',
+                                display: 'flex',
+                                gap: 2,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 999,
+                                    bgcolor: '#fee2e2',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#b91c1c',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <AlertTriangle size={18} />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{ fontWeight: 700, color: '#b91c1c', mb: 1, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'Outfit', fontSize: '1rem' }}
+                                >
+                                    Efficiency Alert
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#b91c1c', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>ZONE</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#7f1d1d' }}>{alertZone.name}</Typography>
+                                    </Box>
+
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#b91c1c', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Avg Delay</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#7f1d1d' }}>{alertZone.avgTotalDelay.toFixed(0)} days</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#b91c1c', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Bottleneck Intensity Index</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#7f1d1d' }}>{alertZone.weightedScore.toFixed(1)}</Typography>
+                                    </Box>
+                                </Box>
+
+                            </Box>
+                        </Paper>
+                    )}
                 </Grid>
+
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <KPICard
-                        title="Top Performing Zone"
-                        value={bestZone ? `${bestZone.name} (Avg ${bestZone.avgTime.toFixed(0)} days)` : 'Awaiting data'}
-                        subtext={
-                            bestZone
-                                ? `${bestZone.onTime.toFixed(0)}% on-time completion with balanced documentation handling`
-                                : 'Upload and analyze data to view insights'
-                        }
-                        accent="#16a34a"
-                        icon={<TrendingUp size={20} />}
-                    />
+                    {bestZone && (
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 2,
+                                border: '1px solid #bbf7d0',
+                                borderLeft: '4px solid #16a34a',
+                                bgcolor: 'white',
+                                display: 'flex',
+                                gap: 2,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 999,
+                                    bgcolor: '#bbf7d0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#15803d',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <TrendingUp size={18} />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{ fontWeight: 700, color: '#15803d', mb: 1, fontFamily: 'Outfit', fontSize: '1rem' }}
+                                >
+                                    Top Performing Zone
+                                </Typography>
+
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>ZONE</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.name}</Typography>
+                                    </Box>
+
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Avg Delay</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.avgTotalDelay.toFixed(0)} days</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Bottleneck Intensity Index</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.weightedScore.toFixed(1)}</Typography>
+                                    </Box>
+                                </Box>
+
+                            </Box>
+                        </Paper>
+                    )}
                 </Grid>
             </Grid>
-
             {/* Zone Heatmap */}
             <Paper
                 elevation={0}
@@ -445,29 +718,18 @@ const ErrorAnalysisPage = () => {
                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontFamily: 'Outfit' }}>
                             Zone Efficiency Heatmap
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.25 }}>
-                            Each tile represents one zone. Color intensity reflects average processing delay.
-                        </Typography>
+
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#16a34a' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
-                                Efficient (&lt;= 3 days)
-                            </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#d97706' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
-                                Moderate (3–7 days)
-                            </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: '#dc2626' }} />
-                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
-                                Delayed (&gt; 7 days)
-                            </Typography>
-                        </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" sx={{ color: '#15803d', fontWeight: 800 }}>Efficient (&lt; 20)</Typography>
+                        <Box sx={{
+                            width: 120,
+                            height: 10,
+                            borderRadius: 1,
+                            background: 'linear-gradient(to right, #15803d, #d97706, #991b1b)',
+                            border: '1px solid #e2e8f0'
+                        }} />
+                        <Typography variant="caption" sx={{ color: '#991b1b', fontWeight: 800 }}>Delayed (60+)</Typography>
                     </Box>
                 </Box>
 
@@ -482,516 +744,386 @@ const ErrorAnalysisPage = () => {
                         </Grid>
                     ))}
                 </Grid>
-            </Paper>
+            </Paper >
 
             {/* Detailed Analysis for Selected Zone */}
-            {activeZone && (
-                <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, lg: 4 }}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 3,
-                                borderRadius: 2,
-                                border: '1px solid #e5e7eb',
-                                bgcolor: 'white',
-                                height: '100%',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                                <Box
-                                    sx={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: 2,
-                                        bgcolor: '#0f172a',
-                                        color: 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    <MapPin size={18} />
-                                </Box>
-                                <Box>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
-                                        {activeZone.name}: Detailed Analysis
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: '#64748b' }}>
-                                        Category distribution for resolved and pending tickets in this zone.
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box sx={{ height: 220 }}>
-                                {selectedZoneCategories.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={selectedZoneCategories}
-                                                dataKey="value"
-                                                nameKey="name"
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={50}
-                                                outerRadius={80}
-                                                paddingAngle={3}
-                                                labelLine={false}
-                                            >
-                                                {selectedZoneCategories.map(entry => (
-                                                    <Cell
-                                                        key={entry.name}
-                                                        fill={CATEGORY_COLORS[entry.name] || CATEGORY_COLORS.Uncategorized}
-                                                    />
-                                                ))}
-                                            </Pie>
-                                            <RechartsTooltip
-                                                contentStyle={{
-                                                    borderRadius: 8,
-                                                    border: '1px solid #e5e7eb',
-                                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-                                                    fontSize: '0.8rem'
-                                                }}
-                                            />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                ) : (
+            {
+                activeZone && (
+                    <Grid container spacing={3}>
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    p: 3,
+                                    borderRadius: 2,
+                                    border: '1px solid #e5e7eb',
+                                    bgcolor: 'white',
+                                    height: '100%',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
                                     <Box
                                         sx={{
-                                            height: '100%',
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: 2,
+                                            bgcolor: '#0f172a',
+                                            color: 'white',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center'
                                         }}
                                     >
-                                        <Typography variant="caption" sx={{ color: '#9ca3af' }}>
-                                            No forensic category data for this zone yet.
+                                        <MapPin size={18} />
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                                            {activeZone.name}: Detailed Analysis
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                            Category distribution for resolved and pending tickets in this zone.
                                         </Typography>
                                     </Box>
-                                )}
-                            </Box>
+                                </Box>
 
-                            {/* Inline legend for readability (labels removed from inside pie) */}
-                            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                                {selectedZoneCategories.map(cat => (
-                                    <Box
-                                        key={cat.name}
-                                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                    >
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Box
-                                                sx={{
-                                                    width: 10,
-                                                    height: 10,
-                                                    borderRadius: '999px',
-                                                    bgcolor:
-                                                        CATEGORY_COLORS[cat.name] || CATEGORY_COLORS.Uncategorized
-                                                }}
-                                            />
-                                            <Typography variant="caption" sx={{ color: '#4b5563', fontWeight: 600 }}>
-                                                {cat.name}
+                                <Box sx={{ height: 220 }}>
+                                    {selectedZoneCategories.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={selectedZoneCategories}
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={50}
+                                                    outerRadius={80}
+                                                    paddingAngle={3}
+                                                    labelLine={false}
+                                                >
+                                                    {selectedZoneCategories.map(entry => (
+                                                        <Cell
+                                                            key={entry.name}
+                                                            fill={CATEGORY_COLORS[entry.name] || CATEGORY_COLORS.Uncategorized}
+                                                        />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip
+                                                    contentStyle={{
+                                                        borderRadius: 8,
+                                                        border: '1px solid #e5e7eb',
+                                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                                                        fontSize: '0.8rem'
+                                                    }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <Box
+                                            sx={{
+                                                height: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            <Typography variant="caption" sx={{ color: '#9ca3af' }}>
+                                                No forensic category data for this zone yet.
                                             </Typography>
                                         </Box>
-                                        <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 600 }}>
-                                            {cat.percentage}%
+                                    )}
+                                </Box>
+
+                                {/* Inline legend for readability (labels removed from inside pie) */}
+                                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                                    {selectedZoneCategories.map(cat => (
+                                        <Box
+                                            key={cat.name}
+                                            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: '999px',
+                                                        bgcolor:
+                                                            CATEGORY_COLORS[cat.name] || CATEGORY_COLORS.Uncategorized
+                                                    }}
+                                                />
+                                                <Typography variant="caption" sx={{ color: '#4b5563', fontWeight: 600 }}>
+                                                    {cat.name}
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                                                {cat.percentage}%
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Paper>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, lg: 8 }}>
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    p: 3,
+                                    borderRadius: 2,
+                                    border: '1px solid #e5e7eb',
+                                    bgcolor: 'white',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontFamily: 'Outfit' }}>
+                                            Employee Workload &amp; Delay Analysis
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.25 }}>
+                                            Sorted by <strong>Average Delay</strong> to highlight potential bottlenecks.
                                         </Typography>
                                     </Box>
-                                ))}
-                            </Box>
-                        </Paper>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, lg: 8 }}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 3,
-                                borderRadius: 2,
-                                border: '1px solid #e5e7eb',
-                                bgcolor: 'white',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Box>
-                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontFamily: 'Outfit' }}>
-                                        Employee Workload &amp; Delay Analysis
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.25 }}>
-                                        Sorted by{' '}
-                                        <strong>Documentation &amp; Compliance Issues</strong> share to highlight
-                                        potential bottlenecks.
-                                    </Typography>
-                                </Box>
-                                <Chip
-                                    icon={<Users size={14} />}
-                                    label={`${selectedZoneEmployees.length} employees`}
-                                    size="small"
-                                    sx={{
-                                        height: 26,
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        bgcolor: '#f9fafb',
-                                        color: '#4b5563',
-                                        border: '1px solid #e5e7eb',
-                                        '& .MuiChip-icon': {
-                                            color: '#4b5563'
-                                        }
-                                    }}
-                                />
-                            </Box>
-
-                            <TableContainer>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
-                                                EMPLOYEE
-                                            </TableCell>
-                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
-                                                ROLE
-                                            </TableCell>
-                                            <TableCell
-                                                align="right"
-                                                sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
-                                            >
-                                                TICKETS
-                                            </TableCell>
-                                            <TableCell
-                                                align="right"
-                                                sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
-                                            >
-                                                AVG DELAY (DAYS)
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {pagedEmployees.length > 0 ? (
-                                            pagedEmployees.map(emp => {
-                                                const isDocHeavy = emp.documentationShare >= 0.4 && emp.ticketCount >= 3;
-                                                return (
-                                                    <TableRow
-                                                        key={emp.name}
-                                                        sx={{
-                                                            transition: 'all 0.15s ease',
-                                                            '&:hover': { bgcolor: isDocHeavy ? '#fef2f2' : '#f8fafc' },
-                                                            borderLeft: isDocHeavy ? '3px solid #dc2626' : '3px solid transparent',
-                                                            bgcolor: isDocHeavy ? '#fefcfc' : 'inherit',
-                                                            '& td': { borderBottom: '1px solid #f1f5f9', py: 2 }
-                                                        }}
-                                                    >
-                                                        <TableCell>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                                <Avatar
-                                                                    sx={{
-                                                                        width: 36,
-                                                                        height: 36,
-                                                                        bgcolor: isDocHeavy
-                                                                            ? alpha('#dc2626', 0.1)
-                                                                            : '#f8fafc',
-                                                                        color: isDocHeavy ? '#dc2626' : '#334155',
-                                                                        border: isDocHeavy ? '1px solid #fca5a5' : '1px solid #e2e8f0',
-                                                                        fontSize: '0.85rem',
-                                                                        fontWeight: 700,
-                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                                                                    }}
-                                                                >
-                                                                    {emp.name.charAt(0).toUpperCase()}
-                                                                </Avatar>
-                                                                <Box>
-                                                                    <Typography
-                                                                        variant="body1"
-                                                                        sx={{
-                                                                            fontWeight: 600,
-                                                                            color: '#0f172a',
-                                                                            maxWidth: 200,
-                                                                            whiteSpace: 'nowrap',
-                                                                            textOverflow: 'ellipsis',
-                                                                            overflow: 'hidden'
-                                                                        }}
-                                                                    >
-                                                                        {emp.name}
-                                                                    </Typography>
-                                                                    {isDocHeavy && (
-                                                                        <Typography
-                                                                            variant="caption"
-                                                                            sx={{
-                                                                                color: '#b91c1c',
-                                                                                fontWeight: 600,
-                                                                                fontSize: '0.7rem'
-                                                                            }}
-                                                                        >
-                                                                            High documentation-driven delay
-                                                                        </Typography>
-                                                                    )}
-                                                                </Box>
-                                                            </Box>
-                                                        </TableCell>
-                                                        <TableCell sx={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
-                                                            {emp.role}
-                                                        </TableCell>
-                                                        <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
-                                                            {emp.ticketCount}
-                                                        </TableCell>
-                                                        <TableCell
-                                                            align="right"
-                                                            sx={{
-                                                                fontSize: '0.85rem',
-                                                                fontWeight: emp.avgDelay > 10 ? 700 : 600,
-                                                                color: emp.avgDelay > 10 ? '#b91c1c' : '#334155'
-                                                            }}
-                                                        >
-                                                            {emp.avgDelay.toFixed(0)}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} align="center" sx={{ py: 6, color: '#94a3b8' }}>
-                                                    No employee-level delay patterns detected for this zone.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-
-                            {selectedZoneEmployees.length > pageSize && (
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
-                                    <Pagination
-                                        count={Math.ceil(selectedZoneEmployees.length / pageSize)}
-                                        page={page}
-                                        onChange={(_, value) => setPage(value)}
+                                    <Chip
+                                        icon={<Users size={14} />}
+                                        label={`${selectedZoneEmployees.length} employees`}
                                         size="small"
-                                        color="primary"
+                                        sx={{
+                                            height: 26,
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            bgcolor: '#f9fafb',
+                                            color: '#4b5563',
+                                            border: '1px solid #e5e7eb',
+                                            '& .MuiChip-icon': {
+                                                color: '#4b5563'
+                                            }
+                                        }}
                                     />
                                 </Box>
-                            )}
-                        </Paper>
+
+                                <TableContainer>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                                                <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
+                                                    EMPLOYEE
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}>
+                                                    ROLE
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
+                                                >
+                                                    TICKETS
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#475569', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', py: 1.5 }}
+                                                >
+                                                    AVG DELAY (DAYS)
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {pagedEmployees.length > 0 ? (
+                                                pagedEmployees.map(emp => {
+                                                    const isDelayHeavy = emp.avgDelay > 10;
+                                                    return (
+                                                        <TableRow
+                                                            key={emp.name}
+                                                            sx={{
+                                                                transition: 'all 0.15s ease',
+                                                                '&:hover': { bgcolor: isDelayHeavy ? '#fef2f2' : '#f8fafc' },
+                                                                borderLeft: isDelayHeavy ? '3px solid #dc2626' : '3px solid transparent',
+                                                                bgcolor: isDelayHeavy ? '#fefcfc' : 'inherit',
+                                                                '& td': { borderBottom: '1px solid #f1f5f9', py: 2 }
+                                                            }}
+                                                        >
+                                                            <TableCell>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                    <Avatar
+                                                                        sx={{
+                                                                            width: 36,
+                                                                            height: 36,
+                                                                            bgcolor: isDelayHeavy
+                                                                                ? alpha('#dc2626', 0.1)
+                                                                                : '#f8fafc',
+                                                                            color: isDelayHeavy ? '#dc2626' : '#334155',
+                                                                            border: isDelayHeavy ? '1px solid #fca5a5' : '1px solid #e2e8f0',
+                                                                            fontSize: '0.85rem',
+                                                                            fontWeight: 700,
+                                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                                                        }}
+                                                                    >
+                                                                        {emp.name.charAt(0).toUpperCase()}
+                                                                    </Avatar>
+                                                                    <Box>
+                                                                        <Typography
+                                                                            variant="body1"
+                                                                            sx={{
+                                                                                fontWeight: 600,
+                                                                                color: '#0f172a',
+                                                                                maxWidth: 200,
+                                                                                whiteSpace: 'nowrap',
+                                                                                textOverflow: 'ellipsis',
+                                                                                overflow: 'hidden'
+                                                                            }}
+                                                                        >
+                                                                            {emp.name}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                            </TableCell>
+                                                            <TableCell sx={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                                                                {emp.role}
+                                                            </TableCell>
+                                                            <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                                                                {emp.ticketCount}
+                                                            </TableCell>
+                                                            <TableCell
+                                                                align="right"
+                                                                sx={{
+                                                                    fontSize: '0.85rem',
+                                                                    fontWeight: emp.avgDelay > 10 ? 700 : 600,
+                                                                    color: emp.avgDelay > 10 ? '#b91c1c' : '#334155'
+                                                                }}
+                                                            >
+                                                                {emp.avgDelay.toFixed(0)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="center" sx={{ py: 6, color: '#94a3b8' }}>
+                                                        No employee-level delay patterns detected for this zone.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+
+                                {selectedZoneEmployees.length > pageSize && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
+                                        <Pagination
+                                            count={Math.ceil(selectedZoneEmployees.length / pageSize)}
+                                            page={page}
+                                            onChange={(_, value) => setPage(value)}
+                                            size="small"
+                                            color="primary"
+                                        />
+                                    </Box>
+                                )}
+                            </Paper>
+                        </Grid>
                     </Grid>
-                </Grid>
-            )}
+                )
+            }
 
             {/* Strategic Insights & Recommendations */}
-            {globalCategoryDistribution.length > 0 && (
-                <Paper
-                    elevation={0}
-                    sx={{
-                        mt: 5,
-                        borderRadius: 2,
-                        border: '1px solid #e5e7eb',
-                        bgcolor: 'white',
-                        p: 4,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                    }}
-                >
-                    <Box sx={{ mb: 4 }}>
-                        <Typography
-                            variant="overline"
-                            sx={{
-                                fontWeight: 700,
-                                letterSpacing: '0.1em',
-                                color: currentProject?.statistics?.aiInsights?.severity === 'CRITICAL' ? '#dc2626' : '#64748b',
-                                display: 'block',
-                                lineHeight: 1,
-                                mb: 1
-                            }}
-                        >
-                            AI FORRENSIC INSIGHTS &amp; STRATEGY
-                        </Typography>
-                        <Typography
-                            variant="h4"
-                            sx={{ fontWeight: 800, color: '#0f172a', fontFamily: 'Outfit' }}
-                        >
-                            Strategic Performance Matrix
-                        </Typography>
-                    </Box>
-
-
-
-
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {/* Critical documentation hotspot */}
-                        {alertZone && (
-                            <Paper
-                                elevation={0}
-                                onClick={() => {
-                                    setSelectedZoneName(alertZone.name);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
+            {
+                globalCategoryDistribution.length > 0 && (
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            mt: 5,
+                            borderRadius: 2,
+                            border: '1px solid #e5e7eb',
+                            bgcolor: 'white',
+                            p: 4,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                        }}
+                    >
+                        <Box sx={{ mb: 4 }}>
+                            <Typography
+                                variant="overline"
                                 sx={{
-                                    p: 2.5,
-                                    borderRadius: 2,
-                                    border: '1px solid #fecaca',
-                                    borderLeft: '4px solid #dc2626',
-                                    bgcolor: 'white',
-                                    display: 'flex',
-                                    gap: 2,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                                    '&:hover': {
-                                        borderColor: '#fca5a5',
-                                        bgcolor: '#fef2f2',
-                                        transform: 'translateY(-2px)',
-                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
-                                    }
+                                    fontWeight: 700,
+                                    letterSpacing: '0.1em',
+                                    color: currentProject?.statistics?.aiInsights?.severity === 'CRITICAL' ? '#dc2626' : '#64748b',
+                                    display: 'block',
+                                    lineHeight: 1,
+                                    mb: 1
                                 }}
                             >
-                                <Box
-                                    sx={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: 999,
-                                        bgcolor: '#fee2e2',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#b91c1c',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <AlertTriangle size={18} />
-                                </Box>
-                                <Box>
-                                    <Typography
-                                        variant="subtitle2"
-                                        sx={{ fontWeight: 700, color: '#b91c1c', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'Outfit', fontSize: '1rem' }}
-                                    >
-                                        Critical performance gap: {alertZone.name}
-                                        <Chip label="Click to view details" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', fontWeight: 600 }} />
-                                    </Typography>
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ color: '#7f1d1d', fontSize: '0.8rem', mb: 0.75 }}
-                                    >
-                                        This zone shows elevated average delay of{' '}
-                                        <strong>{alertZone.avgTime.toFixed(0)} days</strong>, with a
-                                        high concentration of documentation‑related bottlenecks. Tighten
-                                        document checklist communication and approval SLAs for this zone.
-                                    </Typography>
-                                </Box>
-                            </Paper>
-                        )}
-
-                        {/* AI Generated Recommendations */}
-                        {currentProject?.statistics?.aiInsights?.recommendations?.map((rec: string, index: number) => (
-                            <Paper
-                                key={`ai-rec-${index}`}
-                                elevation={0}
-                                sx={{
-                                    p: 2.5,
-                                    borderRadius: 2,
-                                    border: '1px solid #e2e8f0',
-                                    borderLeft: '4px solid #4f46e5',
-                                    bgcolor: 'white',
-                                    display: 'flex',
-                                    gap: 2,
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                        borderColor: '#cbd5e1',
-                                        bgcolor: '#f8fafc',
-                                        transform: 'translateY(-2px)'
-                                    }
-                                }}
+                                AI FORRENSIC INSIGHTS &amp; STRATEGY
+                            </Typography>
+                            <Typography
+                                variant="h4"
+                                sx={{ fontWeight: 800, color: '#0f172a', fontFamily: 'Outfit' }}
                             >
-                                <Box
+                                Strategic Performance Matrix
+                            </Typography>
+                        </Box>
+
+
+
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                            {/* AI Generated Recommendations */}
+                            {currentProject?.statistics?.aiInsights?.recommendations?.map((rec: string, index: number) => (
+                                <Paper
+                                    key={`ai-rec-${index}`}
+                                    elevation={0}
                                     sx={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: 999,
-                                        bgcolor: alpha('#4f46e5', 0.1),
+                                        p: 2.5,
+                                        borderRadius: 2,
+                                        border: '1px solid #e2e8f0',
+                                        borderLeft: '4px solid #4f46e5',
+                                        bgcolor: 'white',
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#4f46e5',
-                                        flexShrink: 0,
-                                        fontWeight: 700
+                                        gap: 2,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            borderColor: '#cbd5e1',
+                                            bgcolor: '#f8fafc',
+                                            transform: 'translateY(-2px)'
+                                        }
                                     }}
                                 >
-                                    {index + 1}
-                                </Box>
-                                <Box>
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ color: '#475569', fontSize: '0.925rem', lineHeight: 1.6 }}
+                                    <Box
+                                        sx={{
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: 999,
+                                            bgcolor: alpha('#4f46e5', 0.1),
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#4f46e5',
+                                            flexShrink: 0,
+                                            fontWeight: 700
+                                        }}
                                     >
-                                        <MarkdownWrapper content={rec} />
-                                    </Typography>
-                                </Box>
-                            </Paper>
-                        ))}
+                                        {index + 1}
+                                    </Box>
+                                    <Box>
+                                        <Typography
+                                            component="div"
+                                            variant="body2"
+                                            sx={{ color: '#475569', fontSize: '0.925rem', lineHeight: 1.6 }}
+                                        >
+                                            <MarkdownWrapper content={rec} />
+                                        </Typography>
+                                    </Box>
+                                </Paper>
+                            ))}
 
-                        {/* Efficiency blueprint (Keep as data-driven but style it) */}
-                        {bestZone && !currentProject?.statistics?.aiInsights?.recommendations?.length && (
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    p: 2.5,
-                                    borderRadius: 2,
-                                    border: '1px solid #bbf7d0',
-                                    borderLeft: '4px solid #16a34a',
-                                    bgcolor: 'white',
-                                    display: 'flex',
-                                    gap: 2,
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: 999,
-                                        bgcolor: '#bbf7d0',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#15803d',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <TrendingUp size={18} />
-                                </Box>
-                                <Box>
-                                    <Typography
-                                        variant="subtitle2"
-                                        sx={{ fontWeight: 700, color: '#15803d', mb: 0.5, fontFamily: 'Outfit', fontSize: '1rem' }}
-                                    >
-                                        Efficiency blueprint: {bestZone.name}
-                                    </Typography>
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ color: '#14532d', fontSize: '0.8rem', mb: 0.75 }}
-                                    >
-                                        With an average delay of{' '}
-                                        <strong>{bestZone.avgTime.toFixed(1)} days</strong> and{' '}
-                                        <strong>{bestZone.onTime.toFixed(1)}%</strong> on‑time completion,
-                                        this zone can be used as a reference playbook for staffing
-                                        levels, document verification and escalation patterns.
-                                    </Typography>
-                                </Box>
-                            </Paper>
-                        )}
-
-                        {/* Global documentation footprint (Only show if AI recs are few or it's a major factor) */}
-                        {(() => {
-                            const docEntry = globalCategoryDistribution.find(
-                                c => c.name === 'Documentation & Compliance Issues'
-                            );
-                            if (!docEntry || docEntry.percentage < 20) return null;
-
-                            return (
+                            {/* Efficiency blueprint (Keep as data-driven but style it) */}
+                            {bestZone && !currentProject?.statistics?.aiInsights?.recommendations?.length && (
                                 <Paper
                                     elevation={0}
                                     sx={{
                                         p: 2.5,
                                         borderRadius: 2,
-                                        border: '1px solid #e5e7eb',
-                                        borderLeft: '4px solid #6b7280',
+                                        border: '1px solid #bbf7d0',
+                                        borderLeft: '4px solid #16a34a',
                                         bgcolor: 'white',
                                         display: 'flex',
                                         gap: 2,
@@ -1003,31 +1135,100 @@ const ErrorAnalysisPage = () => {
                                             width: 32,
                                             height: 32,
                                             borderRadius: 999,
-                                            bgcolor: '#e5e7eb',
+                                            bgcolor: '#bbf7d0',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            color: '#111827',
+                                            color: '#15803d',
                                             flexShrink: 0
                                         }}
                                     >
-                                        <MapPin size={18} />
+                                        <TrendingUp size={18} />
                                     </Box>
                                     <Box>
                                         <Typography
-                                            variant="body2"
-                                            sx={{ color: '#374151', fontSize: '0.8rem' }}
+                                            variant="subtitle2"
+                                            sx={{ fontWeight: 700, color: '#15803d', mb: 1, fontFamily: 'Outfit', fontSize: '1rem' }}
                                         >
-                                            Across all zones, {docEntry.percentage}% of analyzed tickets are primarily delayed due to Documentation & Compliance Issues. Introduce standard digital document verification and proactive applicant nudges to reduce this footprint.
+                                            Top Performing Zone
                                         </Typography>
+
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                            <Box>
+                                                <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>ZONE</Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.name}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>TICKETS</Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.ticketCount} tkt</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Avg Delay</Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.avgTotalDelay.toFixed(0)} days</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="overline" sx={{ color: '#15803d', fontWeight: 700, opacity: 0.8, display: 'block', lineHeight: 1 }}>Avg Internal (Employee‑only)</Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 800, color: '#14532d' }}>{bestZone.avgInternalDelay.toFixed(1)}d</Typography>
+                                            </Box>
+                                        </Box>
+
+
                                     </Box>
                                 </Paper>
-                            );
-                        })()}
-                    </Box>
-                </Paper>
-            )}
-        </Box>
+                            )}
+
+                            {/* Global documentation footprint (Only show if AI recs are few or it's a major factor) */}
+                            {(() => {
+                                const docEntry = globalCategoryDistribution.find(
+                                    c => c.name === 'Documentation & Compliance Issues'
+                                );
+                                if (!docEntry || docEntry.percentage < 20) return null;
+
+                                return (
+                                    <Paper
+                                        elevation={0}
+                                        sx={{
+                                            p: 2.5,
+                                            borderRadius: 2,
+                                            border: '1px solid #e5e7eb',
+                                            borderLeft: '4px solid #6b7280',
+                                            bgcolor: 'white',
+                                            display: 'flex',
+                                            gap: 2,
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 999,
+                                                bgcolor: '#e5e7eb',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#111827',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <MapPin size={18} />
+                                        </Box>
+                                        <Box>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{ color: '#374151', fontSize: '0.8rem' }}
+                                            >
+                                                Across all zones, {docEntry.percentage}% of analyzed tickets are primarily delayed due to Documentation & Compliance Issues. Introduce standard digital document verification and proactive applicant nudges to reduce this footprint.
+                                            </Typography>
+                                        </Box>
+                                    </Paper>
+                                );
+                            })()}
+                        </Box>
+                    </Paper>
+                )
+            }
+        </Box >
     );
 };
 
@@ -1067,6 +1268,8 @@ function useZoneAnalytics() {
         const ticketsByZone = new Map<string, Set<string>>();
         const workflowStepsByZone = new Map<string, any[]>();
         const employeesByZoneInternal = new Map<string, Map<string, { role: string; tickets: Set<string>; totalDelay: number; docIssues: number }>>();
+        // Per-zone, per-ticket internal delay accumulator (avoids double-counting tickets across employees)
+        const ticketInternalDelayByZone = new Map<string, Map<string, number>>();
         const categoriesByZoneInternal = new Map<string, Map<string, number>>();
         const globalCategories: Record<string, number> = {};
 
@@ -1082,7 +1285,7 @@ function useZoneAnalytics() {
             }
             workflowStepsByZone.get(zoneName)!.push(step);
 
-            // Employee aggregation (exclude applicant / citizen actions everywhere)
+            // Employee aggregation: exclude applicant/system-facing steps so "internal" is employee-only
             const remarksSource = (step.lifetimeRemarksFrom || '').toUpperCase();
             const roleSource = (step.post || '').toUpperCase();
             const nameSource = (step.employeeName || '').toUpperCase();
@@ -1093,11 +1296,15 @@ function useZoneAnalytics() {
                 'NOTIFICATION SENT TO APPLICANT',
                 'REPLY FROM APPLICANT'
             ];
-            if (excluded.some(e =>
+            const isApplicantSide = excluded.some(e =>
                 remarksSource.includes(e) ||
                 roleSource.includes(e) ||
                 nameSource.includes(e)
-            )) {
+            );
+
+            if (isApplicantSide) {
+                // We still want lifecycle and ticket counts for this step,
+                // but do NOT count its delay towards employee/internal metrics.
                 return;
             }
 
@@ -1121,6 +1328,15 @@ function useZoneAnalytics() {
             const emp = zoneMap.get(displayName)!;
             emp.tickets.add(step.ticketId);
             emp.totalDelay += step.totalDaysRested || 0;
+
+            // Track per-ticket internal delay at zone level (employee-only)
+            if (!ticketInternalDelayByZone.has(zoneName)) {
+                ticketInternalDelayByZone.set(zoneName, new Map());
+            }
+            const zoneTicketMap = ticketInternalDelayByZone.get(zoneName)!;
+            const prevDelay = zoneTicketMap.get(step.ticketId) || 0;
+            const stepDelay = Math.max(0, step.totalDaysRested || 0);
+            zoneTicketMap.set(step.ticketId, prevDelay + stepDelay);
 
             const rep = reports[step.ticketId];
             if (rep?.delayAnalysis?.primaryDelayCategory) {
@@ -1148,6 +1364,15 @@ function useZoneAnalytics() {
             });
         });
 
+        // Determine 'Latest Date' in dataset to use as 'Today' for pending tickets
+        let latestDate = new Date(0);
+        steps.forEach(s => {
+            const d = parseDateString(s.deliveredOn) || parseDateString(s.applicationDate);
+            if (d && d > latestDate) latestDate = d;
+        });
+        // If no dates, use actual Today as absolute fallback
+        const referenceDate = latestDate.getTime() > 0 ? latestDate : new Date();
+
         const zones: ZoneSummary[] = Array.from(ticketsByZone.entries()).map(([zoneName, tickets]) => {
             const perf = baseByName[zoneName] || { onTime: 0, avgTime: 0 };
             const catMap = categoriesByZoneInternal.get(zoneName) || new Map();
@@ -1155,7 +1380,7 @@ function useZoneAnalytics() {
             const docCount = catMap.get('Documentation & Compliance Issues') || 0;
             const documentationDelayRate = docCount / totalCatTickets;
 
-            // NEW: Calculate Total Delay based on Ticket Lifecycle (DeliveredOn - ApplicationDate)
+            // CORRECTED: Calculate Total Delay including pending tickets
             let totalLifecycleDelay = 0;
             let ticketsWithValidDates = 0;
 
@@ -1163,52 +1388,51 @@ function useZoneAnalytics() {
                 const ticketSteps = (workflowStepsByZone.get(zoneName) || []).filter(s => s.ticketId === ticketId);
                 if (ticketSteps.length === 0) return;
 
-                // Find dates (should be available in any step, but let's be safe)
                 const firstStep = ticketSteps[0];
                 const appDateStr = firstStep.applicationDate;
                 const delDateStr = firstStep.deliveredOn;
 
-                if (appDateStr && delDateStr && appDateStr !== 'NULL' && delDateStr !== 'NULL') {
-                    try {
-                        const start = new Date(appDateStr);
-                        const end = new Date(delDateStr);
-                        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-                            const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-                            if (diff >= 0) {
-                                totalLifecycleDelay += diff;
-                                ticketsWithValidDates++;
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to parse dates for ticket ${ticketId}`);
+                const appDate = parseDateString(appDateStr);
+                const delDate = (delDateStr && delDateStr !== 'NULL') ? parseDateString(delDateStr) : referenceDate;
+
+                if (appDate && delDate) {
+                    const diff = Math.floor((delDate.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diff >= 0) {
+                        totalLifecycleDelay += diff;
+                        ticketsWithValidDates++;
                     }
                 }
             });
 
             const avgTotalDelay = ticketsWithValidDates > 0 ? totalLifecycleDelay / ticketsWithValidDates : 0;
-            let internalDelay = 0;
-            const zoneEmployees = employeesByZoneInternal.get(zoneName);
-
-            if (zoneEmployees) {
-                zoneEmployees.forEach((emp: any) => {
-                    internalDelay += emp.totalDelay;
+            // Internal delay per ticket (sum of step-level resting days, once per ticket)
+            let internalDelayValue = 0;
+            const zoneTicketInternal = ticketInternalDelayByZone.get(zoneName);
+            if (zoneTicketInternal) {
+                zoneTicketInternal.forEach(delay => {
+                    internalDelayValue += delay;
                 });
             }
 
-            const ticketCount = tickets.size;
-            const avgInternalDelay = ticketCount > 0 ? internalDelay / ticketCount : 0;
+            const totalTicketCount = tickets.size;
+            const avgInternalDelay = totalTicketCount > 0 ? internalDelayValue / totalTicketCount : 0;
+
+            // Calculate Weighted Performance Score: AvgDelay * (1 + 10/TicketCount)
+            // Lower score is better. High volume pulls score down towards actual average.
+            const weightedScore = avgInternalDelay * (1 + 10 / totalTicketCount);
 
             return {
                 name: zoneName,
                 avgTime: perf.avgTime || 0,
                 avgTotalDelay,
                 onTime: perf.onTime || 0,
-                ticketCount,
-                internalDelay,
+                ticketCount: totalTicketCount,
+                internalDelay: internalDelayValue,
                 avgInternalDelay,
-                documentationDelayRate
+                documentationDelayRate,
+                weightedScore
             };
-        }).sort((a, b) => a.avgTotalDelay - b.avgTotalDelay);
+        }).sort((a, b) => a.weightedScore - b.weightedScore || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
         // Employees mapped to table rows per zone
         const employeesByZone: Record<string, EmployeeRowData[]> = {};
@@ -1228,7 +1452,7 @@ function useZoneAnalytics() {
                     documentationShare
                 });
             });
-            rows.sort((a, b) => b.documentationShare - a.documentationShare || b.ticketCount - a.ticketCount);
+            rows.sort((a, b) => b.avgDelay - a.avgDelay || b.ticketCount - a.ticketCount);
             employeesByZone[zoneName] = rows;
         });
 
@@ -1254,12 +1478,11 @@ function useZoneAnalytics() {
             }))
             .sort((a, b) => b.value - a.value);
 
-        const alertZone =
-            zones
-                .filter(z => z.avgTime > 7)
-                .sort((a, b) => b.documentationDelayRate - a.documentationDelayRate || b.avgTime - a.avgTime)[0] || null;
-
+        // Align summary cards with heatmap ordering:
+        // - bestZone: same as first tile in heatmap (lowest avgInternalDelay)
+        // - alertZone: same as last tile in heatmap (highest avgInternalDelay)
         const bestZone = zones.length > 0 ? zones[0] : null;
+        const alertZone = zones.length > 0 ? zones[zones.length - 1] : null;
 
         return {
             zones,
@@ -1281,7 +1504,8 @@ function useZoneAnalytics() {
         selectedZoneCategories: effectiveSelectedZoneName ? categoriesByZone[effectiveSelectedZoneName] || [] : [],
         globalCategoryDistribution,
         alertZone,
-        bestZone
+        bestZone,
+        employeesByZone
     };
 }
 

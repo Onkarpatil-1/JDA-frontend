@@ -3,6 +3,7 @@ import { Box, Paper, Typography, Grid, Table, TableBody, TableCell, TableContain
 import { Layers, Building2, FileText, Activity, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import type { JDAIntelligence } from '../types';
+import { parseDateString } from '../utils/dateUtils';
 
 const DataDistributionDashboard: React.FC = () => {
     const { currentProject } = useProject();
@@ -21,15 +22,8 @@ const DataDistributionDashboard: React.FC = () => {
 
         currentProject.workflowSteps.forEach(step => {
             if (!ticketDateMap.has(step.ticketId)) {
-                // Parse dates. Assuming format could be MM/DD/YYYY or YYYY-MM-DD
-                const parseDate = (dateStr: string) => {
-                    if (!dateStr) return null;
-                    const d = new Date(dateStr);
-                    return isNaN(d.getTime()) ? null : d;
-                };
-
-                const appDate = parseDate(step.applicationDate);
-                const deliveredDate = parseDate(step.deliveredOn);
+                const appDate = parseDateString(step.applicationDate);
+                const deliveredDate = parseDateString(step.deliveredOn);
 
                 ticketDateMap.set(step.ticketId, {
                     appDate,
@@ -151,15 +145,11 @@ const DataDistributionDashboard: React.FC = () => {
             {/* 1. Header Section */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 5 }}>
                 <Box>
-                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        Admin {'>'} Performance Dashboard
-                    </Typography>
+
                     <Typography variant="h4" sx={{ mt: 1, mb: 1, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
                         Data Distribution and Performance Dashboard
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 700 }}>
-                        Analyzing application processing efficiency and ticket distribution across Jaipur Development Authority departments.
-                    </Typography>
+
                 </Box>
 
                 <Paper elevation={0} sx={{
@@ -312,7 +302,7 @@ const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.React
                     </Typography>
                 </Box>
                 <Chip
-                    label={`${data.length} Total`}
+                    label={`Total: ${data.length.toLocaleString()}`}
                     size="small"
                     sx={{
                         height: 20,
@@ -358,11 +348,17 @@ const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.React
                                 {item.name}
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.85rem' }}>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.85rem' }}
+                                >
                                     {item.count.toLocaleString()}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.6rem', mt: -0.2 }}>
-                                    Tickets
+                                <Typography
+                                    variant="caption"
+                                    sx={{ color: '#94a3b8', fontSize: '0.6rem', mt: -0.2 }}
+                                >
+                                    {item.count === 1 ? 'Ticket' : 'Tickets'}
                                 </Typography>
                             </Box>
                         </Box>
@@ -378,37 +374,51 @@ const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.React
             </Box>
 
             {/* Pagination Controls */}
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.65rem' }}>
-                    PAGE {page + 1} OF {totalPages || 1}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton
-                        size="small"
-                        onClick={handlePrev}
-                        disabled={page === 0}
-                        sx={{
-                            borderRadius: '8px',
-                            bgcolor: page === 0 ? 'transparent' : '#f8fafc',
-                            '&:hover': { bgcolor: '#eff6ff', color: '#3b82f6' }
-                        }}
+            {totalPages > 1 && (
+                <Box
+                    sx={{
+                        mt: 2,
+                        pt: 2,
+                        borderTop: '1px solid #f1f5f9',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}
+                >
+                    <Typography
+                        variant="caption"
+                        sx={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.65rem' }}
                     >
-                        <ChevronLeft size={14} />
-                    </IconButton>
-                    <IconButton
-                        size="small"
-                        onClick={handleNext}
-                        disabled={page >= totalPages - 1}
-                        sx={{
-                            borderRadius: '8px',
-                            bgcolor: page >= totalPages - 1 ? 'transparent' : '#f8fafc',
-                            '&:hover': { bgcolor: '#eff6ff', color: '#3b82f6' }
-                        }}
-                    >
-                        <ChevronRight size={14} />
-                    </IconButton>
+                        PAGE {page + 1} OF {totalPages}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <IconButton
+                            size="small"
+                            onClick={handlePrev}
+                            disabled={page === 0}
+                            sx={{
+                                borderRadius: '8px',
+                                bgcolor: page === 0 ? 'transparent' : '#f8fafc',
+                                '&:hover': { bgcolor: '#eff6ff', color: '#3b82f6' }
+                            }}
+                        >
+                            <ChevronLeft size={14} />
+                        </IconButton>
+                        <IconButton
+                            size="small"
+                            onClick={handleNext}
+                            disabled={page >= totalPages - 1}
+                            sx={{
+                                borderRadius: '8px',
+                                bgcolor: page >= totalPages - 1 ? 'transparent' : '#f8fafc',
+                                '&:hover': { bgcolor: '#eff6ff', color: '#3b82f6' }
+                            }}
+                        >
+                            <ChevronRight size={14} />
+                        </IconButton>
+                    </Box>
                 </Box>
-            </Box>
+            )}
         </Paper>
     );
 };

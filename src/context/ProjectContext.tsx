@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import type { ReactNode } from 'react';
 import type { ProjectData, ProjectMetadata } from '../types';
 import { analyzeWorkflowData } from '../utils/dataAnalyzer';
+import { parseDateString } from '../utils/dateUtils';
 
 // API Base URL
 import API_BASE from '../lib/api';
@@ -115,6 +116,14 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         setLoading(true);
         setError(null);
 
+        // Reset filters when switching projects to avoid stale filtering
+        setFilters({
+            search: '',
+            zone: 'All',
+            department: 'All',
+            date: ''
+        });
+
         try {
             const response = await fetch(`${API_BASE}/project/${projectId}`);
             if (!response.ok) {
@@ -168,11 +177,13 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
             // Let's parse both to timestamps for comparison.
 
             try {
-                const filterDate = new Date(filters.date).setHours(0, 0, 0, 0);
+                const filterParts = filters.date.split('-');
+                const filterDate = new Date(Number(filterParts[0]), Number(filterParts[1]) - 1, Number(filterParts[2])).getTime();
+
                 if (!isNaN(filterDate)) {
                     filteredSteps = filteredSteps.filter(step => {
-                        const stepDate = new Date(step.applicationDate).setHours(0, 0, 0, 0);
-                        return !isNaN(stepDate) && stepDate >= filterDate; // Filter for "on or after"
+                        const stepDate = parseDateString(step.applicationDate);
+                        return stepDate && stepDate.getTime() >= filterDate; // Filter for "on or after"
                     });
                 }
             } catch (e) {

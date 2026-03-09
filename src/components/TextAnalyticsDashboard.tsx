@@ -68,6 +68,13 @@ const TextAnalyticsDashboard: React.FC = () => {
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const rowsPerPage = 10;
+
+    // Reset local filters when project changes
+    React.useEffect(() => {
+        if (currentProject?.metadata?.id) {
+            handleClearFilters();
+        }
+    }, [currentProject?.metadata?.id]);
     // ... rest of component ...
 
     // ... (Skipping to ExpandableTicketRow) ...
@@ -88,12 +95,13 @@ const TextAnalyticsDashboard: React.FC = () => {
                         const existing = processedTickets.get(ticket.ticketId);
                         const currentDelay = ticket.daysRested || 0;
 
-                        const owner = (ticket.stepOwnerName || '').toUpperCase();
-                        const role = (ticket.stepOwnerRole || '').toUpperCase();
+                        // const owner = (ticket.stepOwnerName || '').toUpperCase();
+                        // const role = (ticket.stepOwnerRole || '').toUpperCase();
 
-                        if (owner === 'APPLICANT' || owner === 'CITIZEN' || role === 'APPLICANT' || role === 'CITIZEN') {
-                            return;
-                        }
+                        // Removing exclusion as per user request to "dont filter any"
+                        // if (owner === 'APPLICANT' || owner === 'CITIZEN' || role === 'APPLICANT' || role === 'CITIZEN') {
+                        //     return;
+                        // }
 
                         if (!existing || currentDelay > existing.delay) {
                             processedTickets.set(ticket.ticketId, {
@@ -337,25 +345,11 @@ const TextAnalyticsDashboard: React.FC = () => {
             {/* 1. Header Section */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                 <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography
-                            variant="caption"
-                            onClick={() => window.location.reload()}
-                            sx={{ color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', '&:hover': { color: '#6366f1' } }}
-                        >
-                            Admin
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600 }}>{'>'}</Typography>
-                        <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            Remarks Analysis
-                        </Typography>
-                    </Box>
+
                     <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
                         Employee & Applicant Remarks Analysis
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#64748b', mt: 1, maxWidth: 800 }}>
-                        Detailed qualitative insights derived from employee and applicant remarks to identify systemic process bottlenecks through categorical classification.
-                    </Typography>
+
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <Paper
@@ -700,8 +694,8 @@ const TextAnalyticsDashboard: React.FC = () => {
                                 <TableRow>
                                     <TableCell colSpan={7} align="center" sx={{ py: 8, color: '#94a3b8' }}>
                                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.6 }}>
-                                            <Filter size={48} strokeWidth={1} style={{ marginBottom: 16 }} />
                                             <Typography variant="body1" sx={{ fontWeight: 600 }}>No tickets found matching current filters.</Typography>
+                                            <Typography variant="caption" sx={{ mt: 1, color: '#64748b' }}>Check the global filters (Zone, Dept, Date) in the header as they may be hiding data.</Typography>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -930,7 +924,6 @@ const ExpandableTicketRow = ({ ticket, forensicAnalysis }: { ticket: any, forens
                                         // metricValue={forensicAnalysis.applicantRemarkAnalysis?.complianceLevel || 'N/A'}
                                         />
                                     </Grid>
-                                    {/* Sentiment Summary */}
                                     {forensicAnalysis.sentimentSummary && (
                                         <Grid size={{ xs: 12 }}>
                                             <Box sx={{ mt: 1, p: 2.5, bgcolor: '#fefce8', borderRadius: 2, border: '1px solid #facc15' }}>
@@ -1068,7 +1061,21 @@ const InsightsCard = ({ title, icon, iconColor, items, tag, dotColor }: {
 
     // Normalize items to human-readable strings so React never tries to render raw objects
     const normalizedItems: string[] = (items || []).map((item: any) => {
-        if (typeof item === 'string') return item;
+        if (typeof item === 'string') {
+            const s = item.trim();
+            if (s.startsWith('{') && s.endsWith('}')) {
+                try {
+                    const o = JSON.parse(s);
+                    if (o.issueType && o.description) return `${o.issueType}: ${o.description}`;
+                    if (o.description) return String(o.description);
+                    if (o.issueType) return String(o.issueType);
+                    if (o.bottleneck) return String(o.bottleneck);
+                } catch {
+                    /* leave as string */
+                }
+            }
+            return s;
+        }
         if (!item) return '';
 
         // Common AI shapes
@@ -1093,6 +1100,10 @@ const InsightsCard = ({ title, icon, iconColor, items, tag, dotColor }: {
         }
         if (item.reasoning != null) return String(item.reasoning).replace(/^"|"$/g, '').trim();
 
+        if (item.issueType && item.description) return `${item.issueType}: ${item.description}`;
+        if (item.description) return String(item.description);
+        if (item.issueType) return String(item.issueType);
+        if (item.bottleneck) return String(item.bottleneck);
         if (item.reason) return String(item.reason);
         if (item.observation) return String(item.observation);
         if (item.remark) return String(item.remark);

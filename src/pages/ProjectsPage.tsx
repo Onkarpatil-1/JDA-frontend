@@ -30,16 +30,72 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
             : "Key is never stored";
 
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                        <Shield size={32} color="#4f46e5" />
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px' }}>
+        <Box sx={{
+            minHeight: '100%',
+            background: 'linear-gradient(180deg, #fafbff 0%, #f1f5f9 50%, #ffffff 100%)',
+            borderRadius: 3,
+            p: { xs: 2, sm: 3 }
+        }}>
+            {/* Hero */}
+            <Box sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'center' },
+                gap: 3,
+                mb: 5
+            }}>
+                <Box sx={{ flex: 1, maxWidth: 640 }}>
+                    <Chip
+                        label="Mission Control"
+                        size="small"
+                        sx={{
+                            mb: 1.5,
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            letterSpacing: '0.06em',
+                            bgcolor: 'rgba(102, 126, 234, 0.12)',
+                            color: '#667eea',
+                            border: '1px solid rgba(102, 126, 234, 0.25)',
+                            fontFamily: 'Outfit, sans-serif'
+                        }}
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+                        <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            boxShadow: '0 8px 24px rgba(102, 126, 234, 0.35)'
+                        }}>
+                            <Shield size={26} />
+                        </Box>
+                        <Typography
+                            variant="h4"
+                            sx={{
+                                fontWeight: 800,
+                                color: '#0f172a',
+                                letterSpacing: '-0.03em',
+                                lineHeight: 1.2,
+                                fontFamily: 'Outfit, sans-serif'
+                            }}
+                        >
                             JDA Pulse Mission Control
                         </Typography>
                     </Box>
-                    <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600 }}>
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            color: '#64748b',
+                            maxWidth: 560,
+                            lineHeight: 1.65,
+                            fontSize: '1rem'
+                        }}
+                    >
                         Centralized command for SLA monitoring, risk assessment, and operational intelligence.
                         Initialize a new analysis stream below.
                     </Typography>
@@ -48,14 +104,34 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
                     variant="contained"
                     startIcon={<Upload size={20} />}
                     onClick={() => setShowUploader(!showUploader)}
-                    sx={{ px: 3, py: 1.5, fontWeight: 600 }}
+                    sx={{
+                        px: 3.5,
+                        py: 1.75,
+                        fontWeight: 600,
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+                        textTransform: 'none',
+                        fontFamily: 'Outfit, sans-serif',
+                        '&:hover': {
+                            background: 'linear-gradient(135deg, #5a67d8 0%, #6b46a1 100%)',
+                            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)'
+                        }
+                    }}
                 >
                     {showUploader ? 'Cancel' : 'New Project'}
                 </Button>
             </Box>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert
+                    severity="error"
+                    sx={{
+                        mb: 3,
+                        borderRadius: 2,
+                        fontFamily: 'Outfit, sans-serif'
+                    }}
+                >
                     {error}
                 </Alert>
             )}
@@ -64,22 +140,32 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
                 <Paper
                     elevation={0}
                     sx={{
-                        mb: 4,
-                        p: 3,
+                        mb: 5,
+                        p: { xs: 2.5, sm: 4 },
                         borderRadius: 3,
                         background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                        border: '1px solid rgba(102, 126, 234, 0.12)',
+                        boxShadow: '0 4px 24px rgba(102, 126, 234, 0.08), 0 1px 3px rgba(0,0,0,0.04)'
                     }}
                 >
                     <Box sx={{ mb: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                            <Activity size={24} color="#6366f1" />
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <Box sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(102, 126, 234, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Activity size={22} color="#667eea" />
+                            </Box>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', fontFamily: 'Outfit, sans-serif' }}>
                                 Initialize Analysis Stream
                             </Typography>
                         </Box>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{ color: '#64748b', pl: 6, lineHeight: 1.6 }}>
                             Ingest raw telemetry CSV data and configure the primary intelligence engine.
                         </Typography>
                     </Box>
@@ -87,13 +173,13 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12, md: 4 }}>
                             <Box sx={{
-                                p: 2,
+                                p: 2.5,
                                 borderRadius: 2,
-                                bgcolor: 'rgba(99, 102, 241, 0.04)',
-                                border: '1px solid rgba(99, 102, 241, 0.1)',
+                                bgcolor: 'rgba(102, 126, 234, 0.06)',
+                                border: '1px solid rgba(102, 126, 234, 0.15)',
                                 height: '100%'
                             }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#4338ca' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#667eea', fontFamily: 'Outfit, sans-serif' }}>
                                     Configuration
                                 </Typography>
 
@@ -168,110 +254,179 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ selectedProvider = 'ollama'
             )}
 
             {projects.length === 0 && !showUploader ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                    <FolderOpen size={64} color="#cbd5e1" style={{ marginBottom: 16 }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#64748b', mb: 1 }}>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        textAlign: 'center',
+                        py: 8,
+                        px: 3,
+                        borderRadius: 3,
+                        border: '1px dashed rgba(102, 126, 234, 0.25)',
+                        bgcolor: 'rgba(102, 126, 234, 0.02)'
+                    }}
+                >
+                    <Box sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        bgcolor: 'rgba(102, 126, 234, 0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 2
+                    }}>
+                        <FolderOpen size={40} color="#667eea" strokeWidth={1.5} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 1, fontFamily: 'Outfit, sans-serif' }}>
                         No Projects Yet
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Upload a CSV file to create your first project using {selectedProvider}
+                    <Typography variant="body2" sx={{ color: '#64748b', mb: 3, maxWidth: 360, mx: 'auto', lineHeight: 1.6 }}>
+                        Upload a CSV file to create your first project and start analyzing with {selectedProvider === 'ollama' ? 'Llama (local)' : selectedProvider}.
                     </Typography>
                     <Button
                         variant="contained"
                         startIcon={<Upload size={20} />}
                         onClick={() => setShowUploader(true)}
+                        sx={{
+                            px: 3.5,
+                            py: 1.5,
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            boxShadow: '0 4px 14px rgba(102, 126, 234, 0.35)',
+                            textTransform: 'none',
+                            fontFamily: 'Outfit, sans-serif',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #5a67d8 0%, #6b46a1 100%)',
+                                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.45)'
+                            }
+                        }}
                     >
                         Upload CSV
                     </Button>
-                </Box>
+                </Paper>
             ) : (
+                <>
+                <Box sx={{ mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#64748b', fontFamily: 'Outfit, sans-serif', letterSpacing: '0.04em' }}>
+                        Your projects
+                    </Typography>
+                </Box>
                 <Grid container spacing={3}>
-                    {projects.map((project) => (
-                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
-                            <Card
-                                sx={{
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s',
-                                    border: currentProject?.metadata.id === project.id ? '2px solid #0f172a' : '1px solid #e2e8f0', // Slate active border
-                                    '&:hover': {
-                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                                        transform: 'translateY(-2px)'
-                                    }
-                                }}
-                                onClick={() => selectProject(project.id)}
-                            >
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                        <Box
-                                            sx={{
+                    {projects.map((project) => {
+                        const isActive = currentProject?.metadata.id === project.id;
+                        return (
+                            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
+                                <Card
+                                    sx={{
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s ease',
+                                        borderRadius: 3,
+                                        border: isActive ? '2px solid #667eea' : '1px solid #e2e8f0',
+                                        borderLeft: isActive ? '4px solid #667eea' : undefined,
+                                        bgcolor: isActive ? 'rgba(102, 126, 234, 0.04)' : '#ffffff',
+                                        boxShadow: isActive ? '0 4px 20px rgba(102, 126, 234, 0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+                                        '&:hover': {
+                                            boxShadow: isActive ? '0 8px 24px rgba(102, 126, 234, 0.18)' : '0 8px 24px rgba(0,0,0,0.08)',
+                                            transform: 'translateY(-2px)',
+                                            borderColor: isActive ? '#667eea' : '#cbd5e1'
+                                        }
+                                    }}
+                                    onClick={() => selectProject(project.id)}
+                                >
+                                    <CardContent sx={{ p: 2.75 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+                                            <Box sx={{
                                                 width: 48,
                                                 height: 48,
                                                 borderRadius: 2,
-                                                bgcolor: '#f1f5f9', // Slate 100
+                                                bgcolor: isActive ? 'rgba(102, 126, 234, 0.12)' : '#f1f5f9',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
-                                            }}
-                                        >
-                                            <FileText size={24} color="#0f172a" />
+                                            }}>
+                                                <FileText size={24} color={isActive ? '#667eea' : '#475569'} />
+                                            </Box>
+                                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                <Typography
+                                                    variant="h6"
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                        fontSize: '0.98rem',
+                                                        fontFamily: 'Outfit, sans-serif',
+                                                        color: '#0f172a'
+                                                    }}
+                                                    noWrap
+                                                    title={project.name}
+                                                >
+                                                    {project.name}
+                                                </Typography>
+                                                {isActive && (
+                                                    <Chip
+                                                        label="Active"
+                                                        size="small"
+                                                        sx={{
+                                                            mt: 0.75,
+                                                            fontWeight: 600,
+                                                            bgcolor: 'rgba(102, 126, 234, 0.15)',
+                                                            color: '#667eea',
+                                                            border: '1px solid rgba(102, 126, 234, 0.3)',
+                                                            fontFamily: 'Outfit, sans-serif'
+                                                        }}
+                                                    />
+                                                )}
+                                            </Box>
                                         </Box>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                                                {project.name}
+
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                            <Calendar size={14} color="#64748b" />
+                                            <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                                Uploaded {new Date(project.uploadedAt).toLocaleDateString()}
                                             </Typography>
-                                            {currentProject?.metadata.id === project.id && (
-                                                <Chip label="Active" size="small" color="primary" sx={{ mt: 0.5 }} />
-                                            )}
                                         </Box>
-                                    </Box>
 
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                        <Calendar size={16} color="#64748b" />
-                                        <Typography variant="caption" color="text.secondary">
-                                            {new Date(project.uploadedAt).toLocaleDateString()}
-                                        </Typography>
-                                    </Box>
-
-                                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e2e8f0' }}>
-                                        <Grid container spacing={2}>
-                                            <Grid size={{ xs: 6 }}>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Tickets
-                                                </Typography>
-                                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                                    {project.totalTickets}
-                                                </Typography>
+                                        <Box sx={{ py: 2, borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 6 }}>
+                                                    <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.25 }}>
+                                                        Tickets
+                                                    </Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Outfit, sans-serif', color: '#0f172a' }}>
+                                                        {project.totalTickets}
+                                                    </Typography>
+                                                </Grid>
+                                                {/* <Grid size={{ xs: 6 }}>
+                                                    <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.25 }}>
+                                                        Avg Time
+                                                    </Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Outfit, sans-serif', color: '#0f172a' }}>
+                                                        {project.avgProcessingTime.toFixed(1)}d
+                                                    </Typography>
+                                                </Grid> */}
                                             </Grid>
-                                            <Grid size={{ xs: 6 }}>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Avg Time
-                                                </Typography>
-                                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                                    {project.avgProcessingTime.toFixed(1)}d
-                                                </Typography>
-                                            </Grid>
-                                        </Grid>
-                                    </Box>
+                                        </Box>
 
-                                    <Box sx={{ mt: 2 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <TrendingUp size={16} color={project.completionRate >= 80 ? '#16a34a' : '#f59e0b'} />
                                             <Typography
                                                 variant="body2"
                                                 sx={{
                                                     fontWeight: 600,
+                                                    fontFamily: 'Outfit, sans-serif',
                                                     color: project.completionRate >= 80 ? '#16a34a' : '#f59e0b'
                                                 }}
                                             >
                                                 {project.completionRate.toFixed(0)}% Complete
                                             </Typography>
                                         </Box>
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    ))}
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        );
+                    })}
                 </Grid>
+                </>
             )}
         </Box>
     );

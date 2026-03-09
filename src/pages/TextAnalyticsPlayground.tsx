@@ -213,17 +213,14 @@ Notification sent to applicant"
                         disabled={loading || (!remarksText.trim() && !fromText.trim())}
                         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Play size={20} />} // Changed Microscope to Play for action
                         sx={{
-                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%)',
+                            // background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%)',
                             px: 4,
                             py: 1.5,
                             borderRadius: 2,
                             fontWeight: 700,
                             letterSpacing: '0.06em',
                             boxShadow: '0 6px 18px rgba(79, 70, 229, 0.35)',
-                            '&:hover': {
-                                boxShadow: '0 8px 22px rgba(67, 56, 202, 0.45)',
-                                background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 60%, #3730a3 100%)'
-                            }
+                     
                         }}
                     >
                         {loading ? 'Analyzing...' : 'Run AI Analysis'}
