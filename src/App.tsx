@@ -57,6 +57,10 @@ function DashboardContent() {
   const [activePage, setActivePage] = useState('Data Distribution');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>('ollama');
+  const handleNavigate = (page: string) => {
+    if (page !== 'Text Analytics') sessionStorage.removeItem('remarksSearch');
+    setActivePage(page);
+  };
 
   // If no project selected, show Projects page
   if (!currentProject) {
@@ -103,7 +107,10 @@ function DashboardContent() {
       case 'Applications':
         return <ApplicationsPage />;
       case 'Data Distribution':
-        return <DataDistributionDashboard />;
+        return <DataDistributionDashboard onTicketClick={(ticketId) => {
+          sessionStorage.setItem('remarksSearch', ticketId);
+          setActivePage('Text Analytics');
+        }} />;
       // case 'Risk Analysis':
       //   return <RiskAnalysisPage />;
       // case 'Analytics':
@@ -144,7 +151,7 @@ function DashboardContent() {
       <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f1f5f9' }}>
         <Sidebar
           activePage={activePage}
-          onNavigate={setActivePage}
+          onNavigate={handleNavigate}
           onCollapse={setIsSidebarCollapsed}
           currentProject={currentProject}
           selectedProvider={selectedProvider}

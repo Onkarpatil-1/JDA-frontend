@@ -68,12 +68,24 @@ const TextAnalyticsDashboard: React.FC = () => {
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const rowsPerPage = 10;
+    const prevProjectId = React.useRef<string | undefined>(undefined);
 
-    // Reset local filters when project changes
+    // On mount, pick up any ticket ID passed via sessionStorage from Data Distribution
     React.useEffect(() => {
-        if (currentProject?.metadata?.id) {
+        const pending = sessionStorage.getItem('remarksSearch');
+        if (pending) {
+            setSearchQuery(pending);
+            setPage(1);
+        }
+    }, []);
+
+    // Reset filters only when the project actually changes (not on first mount)
+    React.useEffect(() => {
+        const id = currentProject?.metadata?.id;
+        if (prevProjectId.current !== undefined && prevProjectId.current !== id) {
             handleClearFilters();
         }
+        prevProjectId.current = id;
     }, [currentProject?.metadata?.id]);
     // ... rest of component ...
 

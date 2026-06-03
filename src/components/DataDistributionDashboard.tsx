@@ -5,7 +5,7 @@ import { useProject } from '../context/ProjectContext';
 import type { JDAIntelligence } from '../types';
 import { parseDateString } from '../utils/dateUtils';
 
-const DataDistributionDashboard: React.FC = () => {
+const DataDistributionDashboard: React.FC<{ onTicketClick?: (ticketId: string) => void }> = ({ onTicketClick }) => {
     const { currentProject } = useProject();
 
     // -------------------------------------------------------------------------
@@ -184,9 +184,13 @@ const DataDistributionDashboard: React.FC = () => {
             <Grid container spacing={3} sx={{ mb: 5 }}>
                 <Grid size={{ xs: 12, md: 4 }}>
                     <SummaryWidget
-                        title="DEPARTMENT NAME"
+                        title="ZONE NAME"
                         icon={<Building2 size={18} />}
                         data={analyticsData.deptVolume}
+                        nameTransform={(name) => {
+                            const match = name.match(/\(([^)]+)\)/);
+                            return match ? match[1] : name;
+                        }}
                     />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
@@ -221,7 +225,7 @@ const DataDistributionDashboard: React.FC = () => {
                         <TableHead sx={{ bgcolor: '#f8fafc' }}>
                             <TableRow>
                                 <TableCell sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2 }}>
-                                    Department Name
+                                    Zone Name
                                 </TableCell>
                                 <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2 }}>
                                     Total Unique Tickets
@@ -234,7 +238,7 @@ const DataDistributionDashboard: React.FC = () => {
                         </TableHead>
                         <TableBody>
                             {analyticsData.deptPerformance.map((dept, index) => (
-                                <ExpandableDeptRow key={index} dept={dept} />
+                                <ExpandableDeptRow key={index} dept={dept} onTicketClick={onTicketClick} />
                             ))}
                         </TableBody>
                     </Table>
@@ -253,7 +257,7 @@ const DataDistributionDashboard: React.FC = () => {
 // EXTRACTED SUB-COMPONENTS
 // -------------------------------------------------------------------------
 
-const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.ReactNode, data: { name: string, count: number }[] }) => {
+const SummaryWidget = ({ title, icon, data, nameTransform }: { title: string, icon: React.ReactNode, data: { name: string, count: number }[], nameTransform?: (name: string) => string }) => {
     const [page, setPage] = React.useState(0);
     const rowsPerPage = 5;
     const maxVal = Math.max(...data.map(d => d.count), 1);
@@ -345,7 +349,7 @@ const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.React
                                 pr: 2,
                                 flexGrow: 1
                             }}>
-                                {item.name}
+                                {nameTransform ? nameTransform(item.name) : item.name}
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                 <Typography
@@ -425,7 +429,7 @@ const SummaryWidget = ({ title, icon, data }: { title: string, icon: React.React
 
 
 // Extracted Row Component for Expansion Logic
-const ExpandableDeptRow = ({ dept }: { dept: any }) => {
+const ExpandableDeptRow = ({ dept, onTicketClick }: { dept: any, onTicketClick?: (ticketId: string) => void }) => {
     const [open, setOpen] = React.useState(false);
 
     return (
@@ -491,7 +495,25 @@ const ExpandableDeptRow = ({ dept }: { dept: any }) => {
                                 <TableBody>
                                     {dept.servicesList.map((svc: any, idx: number) => (
                                         <TableRow key={idx}>
-                                            <TableCell sx={{ color: '#6366f1', fontFamily: 'monospace', fontSize: '0.75rem', fontWeight: 500 }}>
+                                            <TableCell
+                                                sx={{
+                                                    color: '#6366f1',
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 500,
+                                                    cursor: onTicketClick ? 'pointer' : 'default',
+                                                    '&:hover': onTicketClick ? {
+                                                        textDecoration: 'underline',
+                                                        color: '#4f46e5',
+                                                    } : {}
+                                                }}
+                                                onClick={(e) => {
+                                                    if (onTicketClick && svc.ticketId) {
+                                                        e.stopPropagation();
+                                                        onTicketClick(svc.ticketId);
+                                                    }
+                                                }}
+                                            >
                                                 #{svc.ticketId || 'N/A'}
                                             </TableCell>
                                             <TableCell sx={{ fontSize: '0.75rem', color: '#334155' }}>
